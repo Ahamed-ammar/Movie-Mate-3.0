@@ -5,6 +5,7 @@ import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import Landing from './pages/Landing';
 import Home from './pages/Home';
+import Films from './pages/Films';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MovieDetails from './pages/MovieDetails';
@@ -22,7 +23,8 @@ function App() {
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Landing />} />
-              <Route path="/browse" element={<Home />} />
+              <Route path="/browse" element={<Films />} />
+              <Route path="/movies" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/movie/:id" element={<MovieDetails />} />

@@ -62,7 +62,7 @@ const Header = () => {
               <Link
                 to="/browse"
                 className={`text-sm uppercase font-medium transition ${
-                  isActive('/browse') || isActive('/movie')
+                  isActive('/browse') || isActive('/movie') || isActive('/movies')
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
                 }`}

@@ -164,6 +164,96 @@ const Landing = () => {
       <div className="text-center py-8">
         <p className="text-gray-500 text-sm">← Scroll to see more movies →</p>
       </div>
+
+      {/* Features Section */}
+      <section className="relative container mx-auto px-6 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {/* Feature 1: Track Films */}
+          <div className="bg-[#1a1a1a] rounded-lg p-6 flex items-start space-x-4 hover:bg-[#222] transition border border-gray-800">
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Keep track of every film you've ever watched (or just start from the day you join)
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 2: Like Feature */}
+          <div className="bg-[#1a1a1a] rounded-lg p-6 flex items-start space-x-4 hover:bg-[#222] transition border border-gray-800">
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Show some love for your favorite films, lists and reviews with a "like"
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 3: Write Reviews */}
+          <div className="bg-[#1a1a1a] rounded-lg p-6 flex items-start space-x-4 hover:bg-[#222] transition border border-gray-800">
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Write and share reviews, and follow friends and other members to read theirs
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 4: Rate Films */}
+          <div className="bg-[#1a1a1a] rounded-lg p-6 flex items-start space-x-4 hover:bg-[#222] transition border border-gray-800">
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Rate each film on a five-star scale (with halves) to record and share your reaction
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 5: Diary */}
+          <div className="bg-[#1a1a1a] rounded-lg p-6 flex items-start space-x-4 hover:bg-[#222] transition border border-gray-800">
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Keep a diary of your film watching (and upgrade to <span className="font-semibold text-white">Pro</span> for comprehensive stats)
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 6: Lists */}
+          <div className="bg-[#1a1a1a] rounded-lg p-6 flex items-start space-x-4 hover:bg-[#222] transition border border-gray-800">
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Compile and share lists of films on any topic and keep a watchlist of films to see
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

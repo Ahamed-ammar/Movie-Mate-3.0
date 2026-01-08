@@ -8,7 +8,8 @@ const MovieCard = ({ movie }) => {
     ? `${TMDB_IMAGE_BASE_URL}${movie.poster_path}`
     : 'https://via.placeholder.com/500x750?text=No+Poster';
 
-  const movieId = movie._id || movie.id || movie.tmdbId;
+  // Always use tmdbId for routing - if movie is cached, it will be found by tmdbId
+  const movieId = movie.tmdbId || movie.id || movie._id;
 
   return (
     <Link

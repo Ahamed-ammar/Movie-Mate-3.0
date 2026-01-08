@@ -49,7 +49,8 @@ export const register = asyncHandler(async (req, res) => {
         email: user.email,
         bio: user.bio,
         profilePicture: user.profilePicture,
-        joinedDate: user.joinedDate
+        joinedDate: user.joinedDate,
+        role: user.role
       },
       accessToken
     }
@@ -60,10 +61,31 @@ export const register = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 export const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { username, email, password } = req.body;
 
-  // Check if user exists and get password
-  const user = await User.findOne({ email }).select('+password');
+  if (!password) {
+    return res.status(400).json({
+      success: false,
+      error: 'Password is required'
+    });
+  }
+
+  // Support both username and email login
+  // If username is provided, use it (for admin); otherwise use email
+  let user;
+  if (username && username.trim()) {
+    // Username login (for admin)
+    user = await User.findOne({ username: username.trim() }).select('+password');
+  } else if (email && email.trim()) {
+    // Email login (for regular users)
+    user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
+  } else {
+    return res.status(400).json({
+      success: false,
+      error: 'Username or email is required'
+    });
+  }
+
   if (!user) {
     return res.status(401).json({
       success: false,
@@ -105,7 +127,8 @@ export const login = asyncHandler(async (req, res) => {
         email: user.email,
         bio: user.bio,
         profilePicture: user.profilePicture,
-        joinedDate: user.joinedDate
+        joinedDate: user.joinedDate,
+        role: user.role
       },
       accessToken
     }
@@ -193,7 +216,8 @@ export const getMe = asyncHandler(async (req, res) => {
         email: user.email,
         bio: user.bio,
         profilePicture: user.profilePicture,
-        joinedDate: user.joinedDate
+        joinedDate: user.joinedDate,
+        role: user.role
       }
     }
   });
