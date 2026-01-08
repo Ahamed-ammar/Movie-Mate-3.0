@@ -130,12 +130,20 @@ const Header = () => {
                 </Link>
               </>
             ) : (
-              <Link
-                to="/login"
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition text-sm font-medium"
-              >
-                Login
-              </Link>
+              <div className="flex items-center space-x-3">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 text-gray-300 hover:text-white transition text-sm font-medium uppercase"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition text-sm font-medium"
+                >
+                  Create Account
+                </Link>
+              </div>
             )}
           </div>
         </div>

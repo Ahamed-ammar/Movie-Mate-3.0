@@ -41,19 +41,19 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[#0f0f0f]">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-            Create your account
+            Create Account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-400">
-            Or{' '}
+            Already have an account?{' '}
             <Link
               to="/login"
-              className="font-medium text-primary-400 hover:text-primary-300"
+              className="font-medium text-green-500 hover:text-green-400 transition"
             >
-              sign in to your existing account
+              Sign In
             </Link>
           </p>
         </div>
@@ -133,9 +133,9 @@ const Register = () => {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition"
             >
-              {loading ? 'Creating account...' : 'Sign up'}
+              {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </div>
         </form>

@@ -24,10 +24,17 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('accessToken');
       if (token) {
         const response = await authAPI.getMe();
-        setUser(response.data.data.user);
+        const userData = response.data.data.user;
+        // Backend returns 'id', keep both for compatibility
+        setUser({
+          ...userData,
+          id: userData.id,
+          _id: userData.id // Also set _id for compatibility
+        });
       }
     } catch (error) {
       localStorage.removeItem('accessToken');
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -39,7 +46,12 @@ export const AuthProvider = ({ children }) => {
       const { user: userData, accessToken } = response.data.data;
       
       localStorage.setItem('accessToken', accessToken);
-      setUser(userData);
+      // Backend returns 'id', keep both for compatibility
+      setUser({
+        ...userData,
+        id: userData.id,
+        _id: userData.id // Also set _id for compatibility
+      });
       
       return { success: true };
     } catch (error) {
@@ -56,7 +68,12 @@ export const AuthProvider = ({ children }) => {
       const { user: userData, accessToken } = response.data.data;
       
       localStorage.setItem('accessToken', accessToken);
-      setUser(userData);
+      // Backend returns 'id', keep both for compatibility
+      setUser({
+        ...userData,
+        id: userData.id,
+        _id: userData.id // Also set _id for compatibility
+      });
       
       return { success: true };
     } catch (error) {
