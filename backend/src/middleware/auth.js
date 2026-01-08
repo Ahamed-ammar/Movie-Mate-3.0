@@ -1,0 +1,43 @@
+import jwt from 'jsonwebtoken';
+import { asyncHandler } from '../utils/asyncHandler.js';
+
+// Verify access token
+export const protect = asyncHandler(async (req, res, next) => {
+  let token;
+
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: 'Not authorized, no token provided'
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      error: 'Not authorized, token failed'
+    });
+  }
+});
+
+// Generate access token
+export const generateAccessToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_ACCESS_SECRET, {
+    expiresIn: '15m'
+  });
+};
+
+// Generate refresh token
+export const generateRefreshToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: '7d'
+  });
+};
