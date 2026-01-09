@@ -1,15 +1,32 @@
+import { memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { TMDB_IMAGE_BASE_URL } from '../../utils/constants';
 
 const MovieCard = ({ movie }) => {
-  const posterUrl = movie.poster
-    ? movie.poster
-    : movie.poster_path
-    ? `${TMDB_IMAGE_BASE_URL}${movie.poster_path}`
-    : 'https://via.placeholder.com/500x750?text=No+Poster';
+  // Memoize poster URL to prevent recalculation on every render
+  const posterUrl = useMemo(() => {
+    if (movie.poster) return movie.poster;
+    if (movie.poster_path) return `${TMDB_IMAGE_BASE_URL}${movie.poster_path}`;
+    return 'https://via.placeholder.com/500x750?text=No+Poster';
+  }, [movie.poster, movie.poster_path]);
 
-  // Always use tmdbId for routing - if movie is cached, it will be found by tmdbId
-  const movieId = movie.tmdbId || movie.id || movie._id;
+  // Memoize movie ID to prevent recalculation
+  const movieId = useMemo(() => 
+    movie.tmdbId || movie.id || movie._id,
+    [movie.tmdbId, movie.id, movie._id]
+  );
+
+  // Memoize release year to prevent date parsing on every render
+  const releaseYear = useMemo(() => {
+    if (!movie.releaseDate) return null;
+    return new Date(movie.releaseDate).getFullYear();
+  }, [movie.releaseDate]);
+
+  // Memoize rating display
+  const ratingDisplay = useMemo(() => {
+    if (!movie.rating) return null;
+    return movie.rating.toFixed(1);
+  }, [movie.rating]);
 
   return (
     <Link
@@ -22,13 +39,15 @@ const MovieCard = ({ movie }) => {
             src={posterUrl}
             alt={movie.title}
             className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+            loading="lazy"
+            decoding="async"
             onError={(e) => {
               e.target.src = 'https://via.placeholder.com/500x750?text=No+Poster';
             }}
           />
-          {movie.rating && (
+          {ratingDisplay && (
             <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-sm">
-              ⭐ {movie.rating.toFixed(1)}
+              ⭐ {ratingDisplay}
             </div>
           )}
         </div>
@@ -36,9 +55,9 @@ const MovieCard = ({ movie }) => {
           <h3 className="font-semibold text-white mb-1 line-clamp-2 group-hover:text-primary-400 transition">
             {movie.title}
           </h3>
-          {movie.releaseDate && (
+          {releaseYear && (
             <p className="text-gray-400 text-sm">
-              {new Date(movie.releaseDate).getFullYear()}
+              {releaseYear}
             </p>
           )}
         </div>
@@ -47,4 +66,5 @@ const MovieCard = ({ movie }) => {
   );
 };
 
-export default MovieCard;
+// Memoize component to prevent re-renders when props haven't changed
+export default memo(MovieCard);

@@ -206,3 +206,28 @@ export const deleteReview = asyncHandler(async (req, res) => {
     message: 'Review deleted successfully'
   });
 });
+
+// @desc    Get popular reviews this week
+// @route   GET /api/reviews/popular
+// @access  Public
+export const getPopularReviews = asyncHandler(async (req, res) => {
+  const { limit = 10 } = req.query;
+  
+  // Get reviews from the last 7 days
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  const reviews = await Review.find({
+    visibility: 'public',
+    createdAt: { $gte: oneWeekAgo }
+  })
+    .populate('userId', 'username profilePicture')
+    .populate('movieId', 'title poster poster_path releaseDate tmdbId')
+    .sort({ createdAt: -1 })
+    .limit(parseInt(limit));
+
+  res.json({
+    success: true,
+    data: { reviews }
+  });
+});

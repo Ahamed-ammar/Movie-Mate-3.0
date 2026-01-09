@@ -1,0 +1,28 @@
+# Private Documentation - Do not commit to Git
+OPTIMIZATION_DOCUMENTATION.md
+OPTIMIZATION_CHANGELOG.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

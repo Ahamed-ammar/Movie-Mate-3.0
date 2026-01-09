@@ -58,6 +58,21 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+});
+
+// Handle server errors gracefully
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`\n❌ Error: Port ${PORT} is already in use.`);
+    console.error(`Please either:`);
+    console.error(`  1. Stop the process using port ${PORT}`);
+    console.error(`  2. Change the PORT in your .env file`);
+    console.error(`  3. Use a different port by setting PORT environment variable\n`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', error);
+    process.exit(1);
+  }
 });

@@ -7,6 +7,9 @@ import {
   getMoviesByGenre,
   getMoviesByYear,
   getGenres,
+  getWatchProviders,
+  getMoviesByProvider,
+  getMoviesByFilter,
   transformMovieData
 } from '../services/tmdbService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -219,6 +222,78 @@ export const getGenresList = asyncHandler(async (req, res) => {
     success: true,
     data: {
       genres: results.genres
+    }
+  });
+});
+
+// @desc    Get watch providers list
+// @route   GET /api/movies/providers
+// @access  Public
+export const getProvidersList = asyncHandler(async (req, res) => {
+  try {
+    const results = await getWatchProviders();
+    // Results are already filtered to flatrate providers
+    const streamingProviders = results.results || [];
+    
+    res.json({
+      success: true,
+      data: {
+        providers: streamingProviders.map(provider => ({
+          provider_id: provider.provider_id,
+          provider_name: provider.provider_name,
+          logo_path: provider.logo_path
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching providers:', error);
+    res.json({
+      success: true,
+      data: {
+        providers: []
+      }
+    });
+  }
+});
+
+// @desc    Get movies by watch provider
+// @route   GET /api/movies/provider/:providerId
+// @access  Public
+export const getByProvider = asyncHandler(async (req, res) => {
+  const { providerId } = req.params;
+  const { page = 1 } = req.query;
+
+  const results = await getMoviesByProvider(providerId, page);
+
+  const movies = results.results.map(movie => transformMovieData(movie));
+
+  res.json({
+    success: true,
+    data: {
+      movies,
+      page: results.page,
+      totalPages: results.total_pages
+    }
+  });
+});
+
+// @desc    Get movies by filter (top_rated, now_playing, upcoming)
+// @route   GET /api/movies/filter/:filterType
+// @access  Public
+export const getByFilter = asyncHandler(async (req, res) => {
+  const { filterType } = req.params;
+  const { page = 1 } = req.query;
+
+  const results = await getMoviesByFilter(filterType, page);
+
+  const movies = results.results.map(movie => transformMovieData(movie));
+
+  res.json({
+    success: true,
+    data: {
+      movies,
+      page: results.page,
+      totalPages: results.total_pages
     }
   });
 });

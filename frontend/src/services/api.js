@@ -76,11 +76,16 @@ export const moviesAPI = {
   getPopular: (page = 1) => api.get('/movies/popular', { params: { page } }),
   getByGenre: (genreId, page = 1) => api.get(`/movies/genre/${genreId}`, { params: { page } }),
   getByYear: (year, page = 1) => api.get(`/movies/year/${year}`, { params: { page } }),
-  getGenres: () => api.get('/movies/genres')
+  getByProvider: (providerId, page = 1) => api.get(`/movies/provider/${providerId}`, { params: { page } }),
+  getByFilter: (filterType, page = 1) => api.get(`/movies/filter/${filterType}`, { params: { page } }),
+  getGenres: () => api.get('/movies/genres'),
+  getProviders: () => api.get('/movies/providers')
 };
 
 // Reviews API
 export const reviewsAPI = {
+  getPopularReviews: (limit = 10) => 
+    api.get('/reviews/popular', { params: { limit } }),
   getMovieReviews: (movieId, page = 1, limit = 10) => 
     api.get(`/reviews/movie/${movieId}`, { params: { page, limit } }),
   getUserReviews: (userId, page = 1, limit = 10) => 

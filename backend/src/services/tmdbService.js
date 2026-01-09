@@ -12,7 +12,7 @@ const extractApiKeyFromJWT = (token) => {
     // Decode the payload (second part)
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
     
-    // Extract API key from 'aud' (audience) claim
+    // Extract API key from 'aud' (audience) claim 
     return payload.aud || null;
   } catch (error) {
     return null;
@@ -233,6 +233,74 @@ export const getGenres = async () => {
     return response.data;
   } catch (error) {
     throw handleTMDBError(error, 'getGenres');
+  }
+};
+
+// Get watch providers (streaming services)
+export const getWatchProviders = async (region = 'US') => {
+  try {
+    const response = await tmdbAPI.get('/watch/providers/movie', {
+      params: {
+        watch_region: region
+      }
+    });
+    // TMDB returns { results: { US: { flatrate: [...], rent: [...], buy: [...] }, ... } }
+    // We want the flatrate (streaming) providers for the specified region
+    const regionData = response.data.results?.[region] || {};
+    return {
+      results: regionData.flatrate || [],
+      region
+    };
+  } catch (error) {
+    throw handleTMDBError(error, 'getWatchProviders');
+  }
+};
+
+// Get movies by watch provider
+export const getMoviesByProvider = async (providerId, page = 1) => {
+  if (!providerId) {
+    throw new Error('Provider ID is required');
+  }
+  
+  try {
+    const response = await tmdbAPI.get('/discover/movie', {
+      params: {
+        with_watch_providers: providerId,
+        watch_region: 'US',
+        page,
+        sort_by: 'popularity.desc'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw handleTMDBError(error, 'getMoviesByProvider');
+  }
+};
+
+// Get movies by filter type (for "OTHER" category)
+export const getMoviesByFilter = async (filterType, page = 1) => {
+  let endpoint = '';
+  let params = { page };
+  
+  switch (filterType) {
+    case 'top_rated':
+      endpoint = '/movie/top_rated';
+      break;
+    case 'now_playing':
+      endpoint = '/movie/now_playing';
+      break;
+    case 'upcoming':
+      endpoint = '/movie/upcoming';
+      break;
+    default:
+      throw new Error(`Invalid filter type: ${filterType}`);
+  }
+  
+  try {
+    const response = await tmdbAPI.get(endpoint, { params });
+    return response.data;
+  } catch (error) {
+    throw handleTMDBError(error, 'getMoviesByFilter');
   }
 };
 

@@ -7,20 +7,26 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "create-admin": "node create-admin.js"
+    "create-admin": "node create-admin.js",
+    "seed-reviews": "node seed-demo-reviews.js"
   },
-  "keywords": ["movie", "review", "tracking"],
+  "keywords": [
+    "movie",
+    "review",
+    "tracking"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^8.0.3",
-    "dotenv": "^16.3.1",
-    "cors": "^2.8.5",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
     "axios": "^1.6.2",
-    "cookie-parser": "^1.4.6"
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "use-debounce": "^10.0.6"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

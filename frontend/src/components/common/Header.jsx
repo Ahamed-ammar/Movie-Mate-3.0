@@ -19,24 +19,28 @@ const Header = () => {
       <div className="container mx-auto px-6 py-3">
         <div className="flex items-center justify-between">
           {/* Left - Logo */}
-          <div className="flex items-center space-x-4">
-            <Link to="/" className="flex items-center space-x-2">
-              {/* Logo circles */}
-              <div className="flex items-center -space-x-2">
-                <div className="w-8 h-8 rounded-full bg-orange-500"></div>
-                <div className="w-8 h-8 rounded-full bg-green-500"></div>
-                <div className="w-8 h-8 rounded-full bg-blue-500"></div>
-              </div>
-              <span className="text-xl font-semibold text-white tracking-tight">
-                MOVIE-MATE
-              </span>
-            </Link>
+          <Link to="/" className="flex items-center space-x-2">
+            {/* Logo circles */}
+            <div className="flex items-center -space-x-2">
+              <div className="w-8 h-8 rounded-full bg-orange-500"></div>
+              <div className="w-8 h-8 rounded-full bg-green-500"></div>
+              <div className="w-8 h-8 rounded-full bg-blue-500"></div>
+            </div>
+            <span className="text-xl font-semibold text-white tracking-tight">
+              MOVIE-MATE
+            </span>
+          </Link>
 
+          {/* Center - User Info and Navigation Links */}
+          <div className="flex items-center space-x-6 flex-1 justify-center">
             {/* User Info - Only show if authenticated */}
             {isAuthenticated && (
               <>
                 {/* User Profile with Dropdown Arrow */}
-                <div className="hidden md:flex items-center space-x-2 text-gray-400 hover:text-white transition cursor-pointer">
+                <Link
+                  to={`/profile/${user.username}`}
+                  className="hidden md:flex items-center space-x-2 text-gray-400 hover:text-white transition"
+                >
                   <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
@@ -46,7 +50,7 @@ const Header = () => {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
-                </div>
+                </Link>
 
                 {/* Lightning Icon */}
                 <div className="hidden md:block text-gray-400">
