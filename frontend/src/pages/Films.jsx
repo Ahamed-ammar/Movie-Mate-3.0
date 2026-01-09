@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
 import { moviesAPI } from '../services/api';
 import { TMDB_IMAGE_BASE_URL } from '../utils/constants';
@@ -8,20 +9,25 @@ import MovieCardInline from '../components/movies/MovieCardInline';
 import PopularReviewsSection from '../components/reviews/PopularReviewsSection';
 
 const Films = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize state from URL params
+  const getInitialYear = () => searchParams.get('year') || '';
+  const getInitialGenre = () => searchParams.get('genre') || '';
+  const getInitialRating = () => searchParams.get('rating') || '';
+  
   const [popularMovies, setPopularMovies] = useState([]);
   const [genres, setGenres] = useState([]);
-  const [providers, setProviders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showError, setShowError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('');
-  const [selectedRating, setSelectedRating] = useState('');
-  const [selectedProvider, setSelectedProvider] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('');
+  const [selectedYear, setSelectedYear] = useState(getInitialYear());
+  const [selectedGenre, setSelectedGenre] = useState(getInitialGenre());
+  const [selectedRating, setSelectedRating] = useState(getInitialRating());
   const scrollContainerRef = useRef(null);
   const errorTimeoutRef = useRef(null);
+  const retryCountRef = useRef({ year: 0, genre: 0, rating: 0 });
 
   // Memoize helper functions to prevent recreation on every render
   const getPosterUrl = useCallback((movie) => {
@@ -30,10 +36,19 @@ const Films = () => {
     return 'https://via.placeholder.com/500x750?text=No+Poster';
   }, []);
 
-  const movieId = useCallback((movie) => 
-    movie.tmdbId || movie.id || movie._id,
-    []
-  );
+  const movieId = useCallback((movie) => {
+    // Always prioritize tmdbId for navigation - backend expects TMDB ID
+    // Only use _id as absolute last resort, but this should never happen
+    if (movie.tmdbId) return movie.tmdbId;
+    if (movie.id && typeof movie.id === 'number') return movie.id;
+    // If we only have _id, try to extract tmdbId from the movie object
+    // This handles edge cases where movie might be a populated MongoDB document
+    if (movie._id && movie.tmdbId === undefined) {
+      console.warn('Movie missing tmdbId, using _id as fallback:', movie);
+      return movie._id;
+    }
+    return movie._id || movie.id;
+  }, []);
 
   const formatNumber = useCallback((num) => {
     if (num >= 1000000) {
@@ -68,7 +83,7 @@ const Films = () => {
     }
   }, []);
 
-  const loadInitialData = useCallback(async () => {
+  const loadInitialData = useCallback(async (retry = false) => {
     setLoading(true);
     setError(null);
     setShowError(false);
@@ -79,35 +94,35 @@ const Films = () => {
     }
     
     try {
-      const [popularRes, genresRes, providersRes] = await Promise.all([
+      const [popularRes, genresRes] = await Promise.all([
         moviesAPI.getPopular(1),
-        moviesAPI.getGenres(),
-        moviesAPI.getProviders().catch(() => ({ data: { data: { providers: [] } } })) // Handle errors gracefully
+        moviesAPI.getGenres()
       ]);
       setPopularMovies(popularRes.data.data.movies.slice(0, 20));
-      setGenres(genresRes.data.data.genres);
-      // Filter providers to only show major streaming services
-      const allProviders = providersRes.data.data.providers || [];
-      const majorProviders = allProviders.length > 15 
-        ? allProviders.filter(p => 
-            ['Netflix', 'Disney Plus', 'Amazon Prime Video', 'HBO Max', 'Hulu', 'Apple TV Plus', 'Paramount Plus', 'Peacock', 'Max'].includes(p.provider_name)
-          )
-        : allProviders;
-      setProviders(majorProviders);
+      setGenres(genresRes.data.data.genres || []);
       setLoading(false);
+      
+      // Reset retry counters on success
+      retryCountRef.current = { year: 0, genre: 0, rating: 0 };
     } catch (err) {
       console.error('Error loading data:', err);
-      setError('Failed to load movies. Please try again later.');
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to load movies. Please try again later.';
+      setError(errorMessage);
       
       // Set timeout to show error after 3 seconds
       errorTimeoutRef.current = setTimeout(() => {
         setShowError(true);
         setLoading(false);
+        
+        // Auto-retry once if not already retried
+        if (!retry) {
+          setTimeout(() => loadInitialData(true), 2000);
+        }
       }, 3000);
     }
   }, []);
 
-  const loadFilteredMovies = useCallback(async () => {
+  const loadFilteredMovies = useCallback(async (retry = false) => {
     setLoading(true);
     setError(null);
     setShowError(false);
@@ -119,47 +134,75 @@ const Films = () => {
     
     try {
       let movies = [];
+      let filterType = '';
       
-      if (selectedProvider) {
-        const response = await moviesAPI.getByProvider(selectedProvider);
-        movies = response.data.data.movies;
-      } else if (selectedFilter) {
-        const response = await moviesAPI.getByFilter(selectedFilter);
-        movies = response.data.data.movies;
-      } else if (selectedGenre) {
+      if (selectedGenre) {
+        filterType = 'genre';
         const response = await moviesAPI.getByGenre(selectedGenre);
-        movies = response.data.data.movies;
+        movies = response.data.data.movies || [];
+        retryCountRef.current.genre = 0; // Reset on success
       } else if (selectedYear) {
+        filterType = 'year';
         const response = await moviesAPI.getByYear(selectedYear);
-        movies = response.data.data.movies;
+        movies = response.data.data.movies || [];
+        retryCountRef.current.year = 0; // Reset on success
       } else {
         const response = await moviesAPI.getPopular();
-        movies = response.data.data.movies;
+        movies = response.data.data.movies || [];
       }
 
-      // Filter by rating if selected
+      // Filter by rating if selected (client-side filter)
       if (selectedRating) {
-        movies = movies.filter(movie => movie.rating >= parseFloat(selectedRating));
+        movies = movies.filter(movie => {
+          const rating = movie.rating || movie.vote_average || 0;
+          return rating >= parseFloat(selectedRating);
+        });
+        retryCountRef.current.rating = 0; // Reset on success
       }
 
       setPopularMovies(movies.slice(0, 20));
       setLoading(false);
     } catch (err) {
-      setError('Failed to load filtered movies. Please try again.');
+      console.error('Error loading filtered movies:', err);
       
-      // Set timeout to show error after 3 seconds
+      // Retry logic with exponential backoff
+      const maxRetries = 2;
+      if (selectedGenre && retryCountRef.current.genre < maxRetries && !retry) {
+        retryCountRef.current.genre++;
+        setTimeout(() => loadFilteredMovies(true), 1000 * retryCountRef.current.genre);
+        return;
+      }
+      if (selectedYear && retryCountRef.current.year < maxRetries && !retry) {
+        retryCountRef.current.year++;
+        setTimeout(() => loadFilteredMovies(true), 1000 * retryCountRef.current.year);
+        return;
+      }
+      
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to load filtered movies. Please try again.';
+      setError(errorMessage);
+      
+      // Set timeout to show error after 2 seconds
       errorTimeoutRef.current = setTimeout(() => {
         setShowError(true);
         setLoading(false);
-      }, 3000);
+      }, 2000);
     }
-  }, [selectedYear, selectedGenre, selectedRating, selectedProvider, selectedFilter]);
+  }, [selectedYear, selectedGenre, selectedRating]);
 
   // Debounce filter changes to prevent excessive API calls
   const debouncedLoadFiltered = useDebouncedCallback(
     loadFilteredMovies,
     300 // 300ms delay
   );
+
+  // Update URL params when filters change
+  const updateURLParams = useCallback((year, genre, rating) => {
+    const params = new URLSearchParams();
+    if (year) params.set('year', year);
+    if (genre) params.set('genre', genre);
+    if (rating) params.set('rating', rating);
+    setSearchParams(params, { replace: true });
+  }, [setSearchParams]);
 
   const handleSearch = useCallback(async (e) => {
     e.preventDefault();
@@ -169,8 +212,7 @@ const Films = () => {
     setSelectedYear('');
     setSelectedGenre('');
     setSelectedRating('');
-    setSelectedProvider('');
-    setSelectedFilter('');
+    updateURLParams('', '', '');
     
     setLoading(true);
     setError(null);
@@ -204,60 +246,113 @@ const Films = () => {
         setLoading(false);
       }, 1000);
     }
-  }, [searchQuery]);
+  }, [searchQuery, updateURLParams]);
 
   const handleYearChange = useCallback((e) => {
     const value = e.target.value;
     setSelectedYear(value);
     setSelectedGenre('');
-    setSelectedProvider('');
-    setSelectedFilter('');
     setSearchQuery('');
-  }, []);
+    updateURLParams(value, '', selectedRating);
+  }, [selectedRating, updateURLParams]);
 
   const handleGenreChange = useCallback((e) => {
     const value = e.target.value;
     setSelectedGenre(value);
     setSelectedYear('');
-    setSelectedProvider('');
-    setSelectedFilter('');
     setSearchQuery('');
-  }, []);
+    updateURLParams('', value, selectedRating);
+  }, [selectedRating, updateURLParams]);
 
   const handleRatingChange = useCallback((e) => {
-    setSelectedRating(e.target.value);
-  }, []);
-
-  const handleProviderChange = useCallback((e) => {
     const value = e.target.value;
-    setSelectedProvider(value);
-    setSelectedYear('');
-    setSelectedGenre('');
-    setSelectedFilter('');
-    setSearchQuery('');
-  }, []);
+    setSelectedRating(value);
+    updateURLParams(selectedYear, selectedGenre, value);
+  }, [selectedYear, selectedGenre, updateURLParams]);
 
-  const handleFilterChange = useCallback((e) => {
-    const value = e.target.value;
-    setSelectedFilter(value);
-    setSelectedYear('');
-    setSelectedGenre('');
-    setSelectedProvider('');
-    setSearchQuery('');
-  }, []);
-
-  const handleResetFilters = useCallback(() => {
+  const handleClearAllFilters = useCallback(() => {
     setSelectedYear('');
     setSelectedGenre('');
     setSelectedRating('');
-    setSelectedProvider('');
-    setSelectedFilter('');
     setSearchQuery('');
+    updateURLParams('', '', '');
     loadInitialData();
-  }, [loadInitialData]);
+  }, [loadInitialData, updateURLParams]);
 
+  // Load genres on mount
   useEffect(() => {
-    loadInitialData();
+    const loadGenres = async () => {
+      try {
+        const genresRes = await moviesAPI.getGenres();
+        setGenres(genresRes.data.data.genres || []);
+      } catch (err) {
+        console.error('Error loading genres:', err);
+        // Retry once
+        setTimeout(async () => {
+          try {
+            const genresRes = await moviesAPI.getGenres();
+            setGenres(genresRes.data.data.genres || []);
+          } catch (retryErr) {
+            console.error('Error loading genres after retry:', retryErr);
+          }
+        }, 2000);
+      }
+    };
+    loadGenres();
+  }, []);
+
+  // Load initial data or filtered movies on mount based on URL params
+  useEffect(() => {
+    const year = searchParams.get('year') || '';
+    const genre = searchParams.get('genre') || '';
+    const rating = searchParams.get('rating') || '';
+    const hasFilters = year || genre || rating;
+    
+    if (hasFilters) {
+      // Load filtered movies if filters are present from URL - use direct call with URL values
+      const loadOnMount = async () => {
+        setLoading(true);
+        setError(null);
+        setShowError(false);
+        
+        try {
+          let movies = [];
+          
+          if (genre) {
+            const response = await moviesAPI.getByGenre(genre);
+            movies = response.data.data.movies || [];
+          } else if (year) {
+            const response = await moviesAPI.getByYear(year);
+            movies = response.data.data.movies || [];
+          } else {
+            const response = await moviesAPI.getPopular();
+            movies = response.data.data.movies || [];
+          }
+
+          // Filter by rating if selected
+          if (rating) {
+            movies = movies.filter(movie => {
+              const movieRating = movie.rating || movie.vote_average || 0;
+              return movieRating >= parseFloat(rating);
+            });
+          }
+
+          setPopularMovies(movies.slice(0, 20));
+          setLoading(false);
+        } catch (err) {
+          console.error('Error loading filtered movies on mount:', err);
+          setError('Failed to load filtered movies. Please try again.');
+          errorTimeoutRef.current = setTimeout(() => {
+            setShowError(true);
+            setLoading(false);
+          }, 2000);
+        }
+      };
+      loadOnMount();
+    } else {
+      // Load initial popular movies if no filters
+      loadInitialData();
+    }
     
     // Cleanup timeout on unmount
     return () => {
@@ -265,15 +360,21 @@ const Films = () => {
         clearTimeout(errorTimeoutRef.current);
       }
     };
-  }, [loadInitialData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
+  // Load filtered movies when filters change (after initial mount)
   useEffect(() => {
-    // Only load filtered movies if filters are active and search query is empty
-    if ((selectedYear || selectedGenre || selectedRating || selectedProvider || selectedFilter) && !searchQuery.trim()) {
+    const hasFilters = selectedYear || selectedGenre || selectedRating;
+    
+    if (hasFilters && !searchQuery.trim()) {
+      // Load filtered movies when filters change
       debouncedLoadFiltered();
+    } else if (!hasFilters && !searchQuery.trim() && popularMovies.length > 0) {
+      // Reset to popular if all filters cleared
+      loadInitialData();
     }
-    // Note: When search is cleared, the clear button handler will call loadInitialData
-  }, [selectedYear, selectedGenre, selectedRating, selectedProvider, selectedFilter, searchQuery, debouncedLoadFiltered]);
+  }, [selectedYear, selectedGenre, selectedRating, searchQuery, debouncedLoadFiltered, loadInitialData]);
 
   return (
     <div className="min-h-screen bg-[#0f0f0f]">
@@ -327,18 +428,6 @@ const Films = () => {
               </div>
             </div>
 
-            {/* Popular Button */}
-            <button
-              onClick={handleResetFilters}
-              className={`px-4 py-2 bg-[#1a1a1a] border border-gray-700 rounded text-sm uppercase transition hover:bg-[#222] ${
-                !selectedYear && !selectedGenre && !selectedRating && !selectedProvider && !selectedFilter
-                  ? 'text-white'
-                  : 'text-gray-400'
-              }`}
-            >
-              POPULAR
-            </button>
-
             {/* Genre Dropdown */}
             <div className="relative">
               <select
@@ -360,47 +449,15 @@ const Films = () => {
               </div>
             </div>
 
-            {/* Service Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedProvider}
-                onChange={handleProviderChange}
-                className={`px-4 py-2 pr-8 bg-[#1a1a1a] border border-gray-700 rounded text-gray-400 text-sm uppercase focus:outline-none focus:border-gray-600 appearance-none cursor-pointer transition hover:bg-[#222] ${
-                  selectedProvider ? 'text-white' : ''
-                }`}
+            {/* Clear All Filters Button */}
+            {(selectedYear || selectedGenre || selectedRating) && (
+              <button
+                onClick={handleClearAllFilters}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm uppercase transition font-medium"
               >
-                <option value="">SERVICE</option>
-                {providers.map(provider => (
-                  <option key={provider.provider_id} value={provider.provider_id} className="bg-[#1a1a1a] normal-case">{provider.provider_name}</option>
-                ))}
-              </select>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Other Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedFilter}
-                onChange={handleFilterChange}
-                className={`px-4 py-2 pr-8 bg-[#1a1a1a] border border-gray-700 rounded text-gray-400 text-sm uppercase focus:outline-none focus:border-gray-600 appearance-none cursor-pointer transition hover:bg-[#222] ${
-                  selectedFilter ? 'text-white' : ''
-                }`}
-              >
-                <option value="">OTHER</option>
-                <option value="top_rated" className="bg-[#1a1a1a] normal-case">Top Rated</option>
-                <option value="now_playing" className="bg-[#1a1a1a] normal-case">Now Playing</option>
-                <option value="upcoming" className="bg-[#1a1a1a] normal-case">Upcoming</option>
-              </select>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+                Clear All Filters
+              </button>
+            )}
           </div>
 
           {/* Search Input */}

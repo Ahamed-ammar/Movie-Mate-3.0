@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Movie from '../models/Movie.js';
 import {
   searchMovies,
@@ -60,14 +61,90 @@ export const searchMoviesHandler = asyncHandler(async (req, res) => {
 export const getMovieById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  // Always fetch fresh data from TMDB to get credits (director, actors)
-  const tmdbMovie = await getTMDBMovieDetails(parseInt(id));
+  // Check if ID is a valid number (TMDB ID) or MongoDB ObjectId
+  const tmdbId = parseInt(id);
+  if (isNaN(tmdbId) || tmdbId <= 0) {
+    // If not a valid TMDB ID, check if it's a MongoDB ObjectId
+    if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
+      // It's a MongoDB ObjectId, find the movie and get its tmdbId
+      const movie = await Movie.findById(id);
+      if (!movie) {
+        return res.status(404).json({
+          success: false,
+          error: 'Movie not found'
+        });
+      }
+      // Use the movie's tmdbId to fetch from TMDB
+      const tmdbMovie = await getTMDBMovieDetails(movie.tmdbId);
+      // Continue with existing logic...
+      const movieData = transformMovieData(tmdbMovie);
+      
+      // Update existing cached movie
+      Object.assign(movie, movieData);
+      await movie.save();
+
+      // Extract credits from TMDB response
+      const credits = tmdbMovie.credits || {};
+      const director = credits.crew?.find(person => person.job === 'Director');
+      const actors = credits.cast?.slice(0, 10) || [];
+
+      return res.json({
+        success: true,
+        data: { 
+          movie: {
+            ...movie.toObject(),
+            director: director ? {
+              name: director.name,
+              profile_path: director.profile_path ? `https://image.tmdb.org/t/p/w200${director.profile_path}` : null
+            } : null,
+            actors: actors.map(actor => ({
+              name: actor.name,
+              character: actor.character,
+              profile_path: actor.profile_path ? `https://image.tmdb.org/t/p/w200${actor.profile_path}` : null
+            }))
+          }
+        }
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid movie ID format. Expected TMDB ID (number) or MongoDB ObjectId.'
+      });
+    }
+  }
+
+  // Try to find movie in cache first
+  let movie = await Movie.findOne({ tmdbId: tmdbId });
+  
+  // Always try to fetch fresh data from TMDB to get credits (director, actors)
+  let tmdbMovie;
+  try {
+    tmdbMovie = await getTMDBMovieDetails(tmdbId);
+  } catch (error) {
+    // If TMDB API fails but we have cached movie, use cached data
+    if (movie) {
+      console.warn(`TMDB API failed for movie ${tmdbId}, using cached data:`, error.message);
+      // Return cached movie without credits
+      return res.json({
+        success: true,
+        data: { 
+          movie: {
+            ...movie.toObject(),
+            director: null,
+            actors: []
+          }
+        }
+      });
+    } else {
+      // No cached movie and TMDB failed, return error
+      throw error;
+    }
+  }
   
   // Transform movie data
   const movieData = transformMovieData(tmdbMovie);
   
-  // Try to find in cache and update, or create new
-  let movie = await Movie.findOne({ tmdbId: parseInt(id) });
+  // Update or create movie in cache
   if (movie) {
     // Update existing cached movie
     Object.assign(movie, movieData);

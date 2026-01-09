@@ -27,18 +27,29 @@ const MovieDetails = () => {
     loadMovieDetails();
   }, [id]);
 
-  const loadMovieDetails = async () => {
+  const loadMovieDetails = async (suppressError = false) => {
     setLoading(true);
-    setError(null);
+    if (!suppressError) {
+      setError(null);
+    }
     try {
-      const [movieRes, reviewsRes] = await Promise.all([
-        moviesAPI.getById(id),
-        reviewsAPI.getMovieReviews(id)
-      ]);
-
+      // Load movie first, then reviews separately so movie can still display if reviews fail
+      const movieRes = await moviesAPI.getById(id);
       const movieData = movieRes.data.data.movie;
+      
+      if (!movieData) {
+        throw new Error('Movie data is missing from response');
+      }
       setMovie(movieData);
-      setReviews(reviewsRes.data.data.reviews);
+      
+      // Load reviews separately - don't fail if reviews fail
+      try {
+        const reviewsRes = await reviewsAPI.getMovieReviews(id);
+        setReviews(reviewsRes.data.data.reviews || []);
+      } catch (reviewsErr) {
+        console.warn('Failed to load reviews, continuing with movie:', reviewsErr);
+        setReviews([]); // Set empty reviews array
+      }
 
       // Load user's list entries if authenticated
       if (isAuthenticated) {
@@ -59,7 +70,21 @@ const MovieDetails = () => {
         }
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load movie details');
+      console.error('Error loading movie details:', err);
+      if (!suppressError) {
+        const errorMessage = err.response?.data?.error || err.message || 'Failed to load movie details';
+        setError(errorMessage);
+        setMovie(null); // Clear movie on error
+      } else {
+        // Even when suppressing error, we should clear movie if load fails
+        // This prevents showing stale data
+        console.warn('Failed to load movie details (suppressed):', err);
+        setMovie(null);
+      }
+      // Don't re-throw if suppressError is true
+      if (!suppressError) {
+        throw err;
+      }
     } finally {
       setLoading(false);
     }
@@ -87,7 +112,17 @@ const MovieDetails = () => {
       }
       setShowReviewForm(false);
       setEditingReview(null);
-      await loadMovieDetails();
+      
+      // Reload only reviews instead of entire movie details to avoid TMDB API call
+      try {
+        const reviewsRes = await reviewsAPI.getMovieReviews(id);
+        setReviews(reviewsRes.data.data.reviews);
+      } catch (err) {
+        // If review reload fails, don't try full reload - just log the error
+        // The review was saved successfully, and we don't want to risk breaking the page
+        console.warn('Failed to reload reviews after submission:', err);
+        // Optionally, you could add the new review to the local state manually
+      }
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to save review');
     }
@@ -97,16 +132,48 @@ const MovieDetails = () => {
     if (window.confirm('Are you sure you want to delete this review?')) {
       try {
         await reviewsAPI.delete(reviewId);
-        await loadMovieDetails();
+        // Reload only reviews instead of entire movie details to avoid TMDB API call
+        try {
+          const reviewsRes = await reviewsAPI.getMovieReviews(id);
+          setReviews(reviewsRes.data.data.reviews);
+        } catch (err) {
+          // If review reload fails, just remove from local state
+          // The review was deleted successfully, and we don't want to risk breaking the page
+          console.warn('Failed to reload reviews after delete:', err);
+          // Remove the deleted review from local state
+          setReviews(prevReviews => prevReviews.filter(r => r._id !== reviewId));
+        }
       } catch (err) {
         alert(err.response?.data?.error || 'Failed to delete review');
       }
     }
   };
 
+  // Debug logging
+  useEffect(() => {
+    if (!loading && !error && !movie) {
+      console.error('MovieDetails: Component rendered with no movie, no error, and not loading. ID:', id);
+    }
+  }, [loading, error, movie, id]);
+
   if (loading) return <Loading message="Loading movie details..." />;
   if (error) return <ErrorMessage message={error} onRetry={loadMovieDetails} />;
-  if (!movie) return <div>Movie not found</div>;
+  if (!movie) {
+    return (
+      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Movie not found</h2>
+          <p className="text-gray-400 mb-4">The movie with ID {id} could not be loaded.</p>
+          <button
+            onClick={() => loadMovieDetails()}
+            className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const backdropUrl = movie.backdrop
     ? movie.backdrop
