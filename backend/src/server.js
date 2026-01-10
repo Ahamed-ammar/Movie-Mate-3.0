@@ -14,6 +14,7 @@ import userRoutes from './routes/userRoutes.js';
 import movieRoutes from './routes/movieRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import listRoutes from './routes/listRoutes.js';
+import connectionRoutes from './routes/connectionRoutes.js';
 
 // Connect to database
 connectDB();
@@ -36,6 +37,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/lists', listRoutes);
+app.use('/api/connections', connectionRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { usersAPI, reviewsAPI } from '../services/api';
+import { usersAPI, reviewsAPI, connectionsAPI } from '../services/api';
 import ReviewCard from '../components/reviews/ReviewCard';
 import Loading from '../components/common/Loading';
 import ErrorMessage from '../components/common/ErrorMessage';
@@ -11,17 +11,16 @@ const Profile = () => {
   const { user: currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('activity');
+  const [activeTab, setActiveTab] = useState('reviews');
+  const [connectionStatus, setConnectionStatus] = useState(null);
+  const [loadingConnectionStatus, setLoadingConnectionStatus] = useState(false);
   const [data, setData] = useState({
-    activity: [],
-    films: [],
-    diary: [],
     reviews: [],
     watchlist: [],
     playlists: [],
     likes: [],
     tags: [],
-    network: { followers: [], following: [] }
+    network: { connections: [] }
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,6 +28,12 @@ const Profile = () => {
   useEffect(() => {
     loadProfile();
   }, [username]);
+
+  useEffect(() => {
+    if (user && currentUser) {
+      loadConnectionStatus();
+    }
+  }, [user, currentUser]);
 
   useEffect(() => {
     if (user) {
@@ -50,21 +55,25 @@ const Profile = () => {
     }
   };
 
+  const loadConnectionStatus = async () => {
+    if (!currentUser || !user || currentUser.id === user.id || currentUser._id === user.id) {
+      return;
+    }
+    
+    setLoadingConnectionStatus(true);
+    try {
+      const res = await connectionsAPI.getConnectionStatus(user.id);
+      setConnectionStatus(res.data.data);
+    } catch (err) {
+      console.error('Failed to load connection status:', err);
+    } finally {
+      setLoadingConnectionStatus(false);
+    }
+  };
+
   const loadTabData = async () => {
     try {
       switch (activeTab) {
-        case 'activity':
-          // TODO: Load activity data
-          setData(prev => ({ ...prev, activity: [] }));
-          break;
-        case 'films':
-          // TODO: Load films data (movies user has interacted with)
-          setData(prev => ({ ...prev, films: [] }));
-          break;
-        case 'diary':
-          // TODO: Load diary entries
-          setData(prev => ({ ...prev, diary: [] }));
-          break;
         case 'reviews':
           try {
             const reviewsRes = await reviewsAPI.getUserReviews(user.id);
@@ -90,8 +99,22 @@ const Profile = () => {
           setData(prev => ({ ...prev, tags: [] }));
           break;
         case 'network':
-          // TODO: Load network (followers/following)
-          setData(prev => ({ ...prev, network: { followers: [], following: [] } }));
+          try {
+            let connectionsRes;
+            if (isOwnProfile) {
+              connectionsRes = await connectionsAPI.getConnections();
+            } else {
+              // Load connections for the profile user (only if connected)
+              connectionsRes = await connectionsAPI.getUserConnections(user.id);
+            }
+            setData(prev => ({ 
+              ...prev, 
+              network: { connections: connectionsRes.data.data.connections || [] } 
+            }));
+          } catch (err) {
+            // If error is 403, user is not connected - handled in renderTabContent
+            setData(prev => ({ ...prev, network: { connections: [] } }));
+          }
           break;
         default:
           break;
@@ -114,10 +137,48 @@ const Profile = () => {
     }
   };
 
+  const handleConnect = async () => {
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      if (connectionStatus?.status === 'none' || connectionStatus?.status === 'request_received') {
+        if (connectionStatus?.status === 'request_received') {
+          // Accept existing request
+          await connectionsAPI.acceptRequest(connectionStatus.connection.id);
+        } else {
+          // Send new request
+          await connectionsAPI.sendRequest(user.id);
+        }
+        await loadConnectionStatus();
+        // Reload network tab if viewing own profile and on network tab
+        if (isOwnProfile && activeTab === 'network') {
+          await loadTabData();
+        } else if (!isOwnProfile && activeTab === 'network') {
+          // If viewing other user's profile and accepting connection, switch to their network
+          await loadTabData();
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to process connection request');
+    }
+  };
+
+  const handleRemoveConnection = async (connectionId) => {
+    if (window.confirm('Remove this connection?')) {
+      try {
+        await connectionsAPI.removeConnection(connectionId);
+        await loadTabData();
+        await loadConnectionStatus();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to remove connection');
+      }
+    }
+  };
+
   const tabs = [
-    { id: 'activity', label: 'Activity' },
-    { id: 'films', label: 'Films' },
-    { id: 'diary', label: 'Diary' },
     { id: 'reviews', label: 'Reviews' },
     { id: 'watchlist', label: 'WatchList' },
     { id: 'playlists', label: 'PlayLists' },
@@ -128,24 +189,6 @@ const Profile = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'activity':
-        return (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">Activity feed coming soon</p>
-          </div>
-        );
-      case 'films':
-        return (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">Films list coming soon</p>
-          </div>
-        );
-      case 'diary':
-        return (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">Diary entries coming soon</p>
-          </div>
-        );
       case 'reviews':
         return (
           <div>
@@ -185,20 +228,62 @@ const Profile = () => {
           </div>
         );
       case 'network':
+        // Show connections if own profile OR if connected
+        const isConnected = connectionStatus?.status === 'accepted';
+        if (!isOwnProfile && !isConnected) {
+          return (
+            <div className="text-center py-20">
+              <p className="text-gray-400 text-lg">Connect to view this user's network</p>
+            </div>
+          );
+        }
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-xl font-semibold mb-4 text-white">Followers</h3>
-              <div className="text-center py-10 bg-gray-800 rounded-lg">
-                <p className="text-gray-400">{data.network.followers.length} followers</p>
+          <div>
+            <h3 className="text-xl font-semibold mb-4 text-white">Connections</h3>
+            {data.network.connections.length === 0 ? (
+              <div className="text-center py-20 bg-gray-800 rounded-lg">
+                <p className="text-gray-400">No connections yet</p>
               </div>
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold mb-4 text-white">Following</h3>
-              <div className="text-center py-10 bg-gray-800 rounded-lg">
-                <p className="text-gray-400">{data.network.following.length} following</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {data.network.connections.map((conn) => (
+                  <div
+                    key={conn.id}
+                    className="bg-gray-800 rounded-lg p-4 flex items-center justify-between"
+                  >
+                    <Link
+                      to={`/profile/${conn.user.username}`}
+                      className="flex items-center space-x-3 flex-1"
+                    >
+                      <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-white">
+                        {conn.user.profilePicture ? (
+                          <img
+                            src={conn.user.profilePicture}
+                            alt={conn.user.username}
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <span>{conn.user.username.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{conn.user.username}</p>
+                        <p className="text-gray-400 text-sm">
+                          Connected {new Date(conn.connectedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </Link>
+                    <button
+                      onClick={() => handleRemoveConnection(conn.id)}
+                      className="ml-4 px-3 py-1 text-sm text-red-400 hover:text-red-300 transition"
+                      title="Remove connection"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         );
       default:
@@ -224,7 +309,32 @@ const Profile = () => {
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
-              <h1 className="text-3xl font-bold text-white">{user.username}</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-white">{user.username}</h1>
+                {!isOwnProfile && currentUser && (
+                  <button
+                    onClick={handleConnect}
+                    disabled={loadingConnectionStatus}
+                    className={`px-4 py-2 rounded-lg transition text-sm font-medium ${
+                      connectionStatus?.status === 'accepted' || connectionStatus?.status === 'request_sent'
+                        ? 'bg-gray-600 hover:bg-gray-700 text-white'
+                        : connectionStatus?.status === 'request_received'
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    {loadingConnectionStatus
+                      ? 'Loading...'
+                      : connectionStatus?.status === 'accepted'
+                      ? 'Connected'
+                      : connectionStatus?.status === 'request_sent'
+                      ? 'Request Sent'
+                      : connectionStatus?.status === 'request_received'
+                      ? 'Accept'
+                      : 'Connect'}
+                  </button>
+                )}
+              </div>
               {isOwnProfile && (
                 <button
                   onClick={handleLogout}

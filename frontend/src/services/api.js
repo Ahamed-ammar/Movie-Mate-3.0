@@ -112,4 +112,16 @@ export const usersAPI = {
   updateProfile: (data) => api.put('/users/profile', data)
 };
 
+// Connections API
+export const connectionsAPI = {
+  getConnectionStatus: (userId) => api.get(`/connections/status/${userId}`),
+  getConnections: () => api.get('/connections'),
+  getUserConnections: (userId) => api.get(`/connections/user/${userId}`),
+  getPendingRequests: () => api.get('/connections/pending'),
+  sendRequest: (userId) => api.post(`/connections/request/${userId}`),
+  acceptRequest: (connectionId) => api.put(`/connections/accept/${connectionId}`),
+  rejectRequest: (connectionId) => api.delete(`/connections/reject/${connectionId}`),
+  removeConnection: (connectionId) => api.delete(`/connections/${connectionId}`)
+};
+
 export default api;

@@ -1,35 +1,64 @@
 import mongoose from 'mongoose';
 
 const networkSchema = new mongoose.Schema({
-  followerId: {
+  requesterId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Follower ID is required'],
+    required: [true, 'Requester ID is required'],
     index: true
   },
-  followingId: {
+  receiverId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Following ID is required'],
+    required: [true, 'Receiver ID is required'],
     index: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'accepted', 'rejected'],
+    default: 'pending',
+    required: true
   }
 }, {
   timestamps: true
 });
 
-// Compound unique index: one relationship per follower-following pair
-networkSchema.index({ followerId: 1, followingId: 1 }, { unique: true });
-// Prevent self-following
+// Compound unique index: one relationship per user pair (bidirectional)
+// This ensures we can have either direction but not duplicates
+networkSchema.index({ requesterId: 1, receiverId: 1 }, { unique: true });
+
+// Prevent self-connection
 networkSchema.pre('save', function(next) {
-  if (this.followerId.toString() === this.followingId.toString()) {
-    return next(new Error('Users cannot follow themselves'));
+  if (this.requesterId.toString() === this.receiverId.toString()) {
+    return next(new Error('Users cannot connect with themselves'));
   }
   next();
 });
 
 // Indexes for efficient queries
-networkSchema.index({ followerId: 1, createdAt: -1 });
-networkSchema.index({ followingId: 1, createdAt: -1 });
+networkSchema.index({ requesterId: 1, status: 1, createdAt: -1 });
+networkSchema.index({ receiverId: 1, status: 1, createdAt: -1 });
+
+// Static method to find connection between two users (either direction)
+networkSchema.statics.findConnection = function(userId1, userId2) {
+  return this.findOne({
+    $or: [
+      { requesterId: userId1, receiverId: userId2 },
+      { requesterId: userId2, receiverId: userId1 }
+    ]
+  });
+};
+
+// Static method to get all connections for a user
+networkSchema.statics.getConnections = function(userId) {
+  return this.find({
+    status: 'accepted',
+    $or: [
+      { requesterId: userId },
+      { receiverId: userId }
+    ]
+  }).populate('requesterId', 'username profilePicture').populate('receiverId', 'username profilePicture');
+};
 
 const Network = mongoose.model('Network', networkSchema);
 
