@@ -5,7 +5,9 @@ import {
   createReview,
   updateReview,
   deleteReview,
-  getPopularReviews
+  getPopularReviews,
+  likeReview,
+  replyToReview
 } from '../controllers/reviewController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -17,5 +19,7 @@ router.get('/user/:userId', getUserReviews);
 router.post('/', protect, createReview);
 router.put('/:id', protect, updateReview);
 router.delete('/:id', protect, deleteReview);
+router.post('/:id/like', protect, likeReview);
+router.post('/:id/reply', protect, replyToReview);
 
 export default router;

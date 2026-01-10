@@ -39,13 +39,28 @@ const reviewSchema = new mongoose.Schema({
     type: String,
     enum: ['public', 'private'],
     default: 'public'
+  },
+  likes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  parentReviewId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Review',
+    default: null
   }
 }, {
   timestamps: true
 });
 
-// Compound unique index: one review per user per movie
-reviewSchema.index({ userId: 1, movieId: 1 }, { unique: true });
+// Compound unique index: one review per user per movie (only if not a reply)
+reviewSchema.index({ userId: 1, movieId: 1 }, { 
+  unique: true,
+  partialFilterExpression: { parentReviewId: null }
+});
+
+// Index for faster querying of replies
+reviewSchema.index({ parentReviewId: 1 });
 
 const Review = mongoose.model('Review', reviewSchema);
 

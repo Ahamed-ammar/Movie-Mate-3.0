@@ -2,24 +2,21 @@ import { useState } from 'react';
 import RatingInput from '../movies/RatingInput';
 
 const ReviewForm = ({ 
-  initialRatingInteger, 
-  initialRatingStars, 
+  initialRating, 
   initialReviewText, 
   initialVisibility = 'public',
   onSubmit, 
   onCancel,
   submitLabel = 'Submit Review'
 }) => {
-  const [ratingInteger, setRatingInteger] = useState(initialRatingInteger);
-  const [ratingStars, setRatingStars] = useState(initialRatingStars);
+  const [rating, setRating] = useState(initialRating);
   const [reviewText, setReviewText] = useState(initialReviewText || '');
   const [visibility, setVisibility] = useState(initialVisibility);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit({
-      ratingInteger: ratingInteger || undefined,
-      ratingStars: ratingStars !== '' ? ratingStars : undefined,
+      ratingInteger: rating || undefined,
       reviewText: reviewText.trim() || undefined,
       visibility
     });
@@ -31,13 +28,10 @@ const ReviewForm = ({
 
       <div className="mb-4">
         <RatingInput
-          ratingInteger={ratingInteger}
-          ratingStars={ratingStars}
+          rating={rating}
           onChange={(ratings) => {
-            setRatingInteger(ratings.ratingInteger);
-            setRatingStars(ratings.ratingStars);
+            setRating(ratings.rating);
           }}
-          showBoth
         />
       </div>
 

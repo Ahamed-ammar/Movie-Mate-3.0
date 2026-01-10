@@ -460,8 +460,7 @@ const MovieDetails = () => {
               {showReviewForm && (
                 <div className="mb-6">
                   <ReviewForm
-                    initialRatingInteger={editingReview?.ratingInteger}
-                    initialRatingStars={editingReview?.ratingStars}
+                    initialRating={editingReview?.ratingInteger}
                     initialReviewText={editingReview?.reviewText}
                     initialVisibility={editingReview?.visibility}
                     onSubmit={handleSubmitReview}
@@ -482,6 +481,19 @@ const MovieDetails = () => {
                     key={review._id}
                     review={review}
                     onDelete={handleDeleteReview}
+                    onReply={async () => {
+                      // Reload reviews after a reply is posted
+                      try {
+                        const reviewsRes = await reviewsAPI.getMovieReviews(id);
+                        if (reviewsRes?.data?.data?.reviews) {
+                          setReviews(reviewsRes.data.data.reviews);
+                        } else if (reviewsRes?.data?.reviews) {
+                          setReviews(reviewsRes.data.reviews);
+                        }
+                      } catch (err) {
+                        console.warn('Failed to reload reviews after reply:', err);
+                      }
+                    }}
                   />
                 ))
               )}

@@ -4,8 +4,7 @@ import RatingInput from '../movies/RatingInput';
 
 const ListManager = ({ movie, onAddToList, existingEntries = [] }) => {
   const [selectedList, setSelectedList] = useState('');
-  const [ratingInteger, setRatingInteger] = useState('');
-  const [ratingStars, setRatingStars] = useState('');
+  const [rating, setRating] = useState('');
   const [reviewText, setReviewText] = useState('');
   const [dateWatched, setDateWatched] = useState('');
 
@@ -19,8 +18,7 @@ const ListManager = ({ movie, onAddToList, existingEntries = [] }) => {
       movieId: movie._id,
       tmdbId: movie.tmdbId,
       listType: selectedList,
-      ratingInteger: ratingInteger || undefined,
-      ratingStars: ratingStars !== '' ? ratingStars : undefined,
+      ratingInteger: rating || undefined,
       reviewText: reviewText.trim() || undefined,
       dateWatched: dateWatched || undefined
     };
@@ -29,8 +27,7 @@ const ListManager = ({ movie, onAddToList, existingEntries = [] }) => {
     
     // Reset form
     setSelectedList('');
-    setRatingInteger('');
-    setRatingStars('');
+    setRating('');
     setReviewText('');
     setDateWatched('');
   };
@@ -76,13 +73,10 @@ const ListManager = ({ movie, onAddToList, existingEntries = [] }) => {
         {selectedList && (
           <>
             <RatingInput
-              ratingInteger={ratingInteger}
-              ratingStars={ratingStars}
+              rating={rating}
               onChange={(ratings) => {
-                setRatingInteger(ratings.ratingInteger);
-                setRatingStars(ratings.ratingStars);
+                setRating(ratings.rating);
               }}
-              showBoth
             />
 
             {selectedList === LIST_TYPES.WATCHED && (

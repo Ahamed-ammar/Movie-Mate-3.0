@@ -33,21 +33,68 @@ export const getMovieReviews = asyncHandler(async (req, res) => {
   // Use the movie's MongoDB _id to find reviews
   const movieMongoId = movie._id;
 
+  // Only get parent reviews (not replies)
   const reviews = await Review.find({
     movieId: movieMongoId,
-    visibility: 'public'
+    visibility: 'public',
+    parentReviewId: null
   })
     .populate('userId', 'username profilePicture')
+    .populate({
+      path: 'likes',
+      select: '_id'
+    })
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit);
 
-  const total = await Review.countDocuments({ movieId: movieMongoId, visibility: 'public' });
+  // Get replies for each review and check if user liked them
+  const currentUserId = req.user?.userId?.toString();
+  
+  const reviewsWithReplies = await Promise.all(reviews.map(async (review) => {
+    // Get replies for this review
+    const replies = await Review.find({
+      parentReviewId: review._id,
+      visibility: 'public'
+    })
+      .populate('userId', 'username profilePicture')
+      .populate({
+        path: 'likes',
+        select: '_id'
+      })
+      .sort({ createdAt: 1 });
+
+    // Check if current user liked each reply
+    const repliesWithLikeStatus = await Promise.all(replies.map(async (reply) => {
+      const replyObj = reply.toObject();
+      return {
+        ...replyObj,
+        likesCount: reply.likes?.length || 0,
+        isLiked: currentUserId ? reply.likes?.some(like => like._id.toString() === currentUserId) : false
+      };
+    }));
+
+    // Check if current user liked this review
+    const isLiked = currentUserId ? review.likes?.some(like => like._id.toString() === currentUserId) : false;
+    
+    return {
+      ...review.toObject(),
+      likesCount: review.likes?.length || 0,
+      isLiked,
+      replies: repliesWithLikeStatus
+    };
+  }));
+
+  const total = await Review.countDocuments({ 
+    movieId: movieMongoId, 
+    visibility: 'public',
+    parentReviewId: null 
+  });
 
   res.json({
     success: true,
     data: {
-      reviews,
+      reviews: reviewsWithReplies,
       page: parseInt(page),
       totalPages: Math.ceil(total / limit),
       total
@@ -91,10 +138,50 @@ export const getUserReviews = asyncHandler(async (req, res) => {
 // @route   POST /api/reviews
 // @access  Private
 export const createReview = asyncHandler(async (req, res) => {
-  const { movieId, ratingInteger, ratingStars, reviewText, visibility = 'public' } = req.body;
+  const { movieId, ratingInteger, ratingStars, reviewText, visibility = 'public', parentReviewId } = req.body;
   const userId = req.user.userId;
 
-  // Validate that at least one rating is provided
+  // If it's a reply, only reviewText is required
+  if (parentReviewId) {
+    if (!reviewText || reviewText.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Reply text is required'
+      });
+    }
+
+    // Validate parent review exists
+    const parentReview = await Review.findById(parentReviewId);
+    if (!parentReview) {
+      return res.status(404).json({
+        success: false,
+        error: 'Parent review not found'
+      });
+    }
+
+    // Get movieId from parent review for the reply
+    const movieMongoId = parentReview.movieId;
+
+    const review = await Review.create({
+      userId,
+      movieId: movieMongoId,
+      reviewText,
+      visibility: 'public', // Replies are always public
+      parentReviewId
+    });
+
+    await review.populate('userId', 'username profilePicture');
+    review.likesCount = 0;
+    review.isLiked = false;
+
+    res.status(201).json({
+      success: true,
+      data: { review }
+    });
+    return;
+  }
+
+  // For regular reviews, at least one rating is required
   if (!ratingInteger && ratingStars === undefined) {
     return res.status(400).json({
       success: false,
@@ -125,8 +212,8 @@ export const createReview = asyncHandler(async (req, res) => {
   // Use the movie's MongoDB _id for the review
   const movieMongoId = movie._id;
 
-  // Check if review already exists
-  const existingReview = await Review.findOne({ userId, movieId: movieMongoId });
+  // Check if review already exists (only for parent reviews)
+  const existingReview = await Review.findOne({ userId, movieId: movieMongoId, parentReviewId: null });
   if (existingReview) {
     return res.status(400).json({
       success: false,
@@ -145,6 +232,8 @@ export const createReview = asyncHandler(async (req, res) => {
 
   await review.populate('userId', 'username profilePicture');
   await review.populate('movieId', 'title poster releaseDate');
+  review.likesCount = 0;
+  review.isLiked = false;
 
   res.status(201).json({
     success: true,
@@ -229,5 +318,97 @@ export const getPopularReviews = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: { reviews }
+  });
+});
+
+// @desc    Like a review
+// @route   POST /api/reviews/:id/like
+// @access  Private
+export const likeReview = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.userId;
+
+  const review = await Review.findById(id);
+  if (!review) {
+    return res.status(404).json({
+      success: false,
+      error: 'Review not found'
+    });
+  }
+
+  // Check if user already liked
+  const alreadyLiked = review.likes.some(like => like.toString() === userId.toString());
+  
+  if (alreadyLiked) {
+    // Unlike: remove user from likes
+    review.likes = review.likes.filter(like => like.toString() !== userId.toString());
+  } else {
+    // Like: add user to likes
+    review.likes.push(userId);
+  }
+
+  await review.save();
+  
+  // Populate and return updated review
+  await review.populate('userId', 'username profilePicture');
+  await review.populate({
+    path: 'likes',
+    select: 'username profilePicture'
+  });
+
+  res.json({
+    success: true,
+    data: {
+      review: {
+        ...review.toObject(),
+        likesCount: review.likes.length,
+        isLiked: !alreadyLiked
+      }
+    }
+  });
+});
+
+// @desc    Create reply to a review
+// @route   POST /api/reviews/:id/reply
+// @access  Private
+export const replyToReview = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { reviewText } = req.body;
+  const userId = req.user.userId;
+
+  if (!reviewText || reviewText.trim().length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Reply text is required'
+    });
+  }
+
+  const parentReview = await Review.findById(id);
+  if (!parentReview) {
+    return res.status(404).json({
+      success: false,
+      error: 'Review not found'
+    });
+  }
+
+  const reply = await Review.create({
+    userId,
+    movieId: parentReview.movieId,
+    reviewText,
+    visibility: 'public',
+    parentReviewId: id
+  });
+
+  await reply.populate('userId', 'username profilePicture');
+
+  res.status(201).json({
+    success: true,
+    data: {
+      review: {
+        ...reply.toObject(),
+        likesCount: 0,
+        isLiked: false
+      }
+    }
   });
 });

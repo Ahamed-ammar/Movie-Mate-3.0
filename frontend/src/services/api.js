@@ -92,7 +92,9 @@ export const reviewsAPI = {
     api.get(`/reviews/user/${userId}`, { params: { page, limit } }),
   create: (data) => api.post('/reviews', data),
   update: (id, data) => api.put(`/reviews/${id}`, data),
-  delete: (id) => api.delete(`/reviews/${id}`)
+  delete: (id) => api.delete(`/reviews/${id}`),
+  like: (id) => api.post(`/reviews/${id}/like`),
+  reply: (id, reviewText) => api.post(`/reviews/${id}/reply`, { reviewText })
 };
 
 // Lists API
