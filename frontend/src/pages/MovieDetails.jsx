@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { moviesAPI, reviewsAPI, listsAPI } from '../services/api';
 import { TMDB_IMAGE_BASE_URL } from '../utils/constants';
@@ -22,31 +22,133 @@ const MovieDetails = () => {
   const [error, setError] = useState(null);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
+  
+  // Use refs to track loading state and prevent unnecessary reloads on remounts
+  const isLoadingRef = useRef(false);
+  const currentIdRef = useRef(id);
+  
+  // Use sessionStorage to persist loaded state across React StrictMode remounts
+  const getCachedMovieId = () => {
+    try {
+      return sessionStorage.getItem(`movie_${id}_loaded`);
+    } catch {
+      return null;
+    }
+  };
+  
+  const setCachedMovieId = () => {
+    try {
+      sessionStorage.setItem(`movie_${id}_loaded`, id);
+    } catch {
+      // Ignore storage errors
+    }
+  };
+  
+  const clearCachedMovieId = () => {
+    try {
+      sessionStorage.removeItem(`movie_${id}_loaded`);
+    } catch {
+      // Ignore storage errors
+    }
+  };
 
   useEffect(() => {
-    loadMovieDetails();
+    // #region agent log
+    const cachedId = getCachedMovieId();
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:48',message:'Component mounted, starting loadMovieDetails',data:{movieId:id,currentId:currentIdRef.current,isLoading:isLoadingRef.current,hasMovie:!!movie,cachedId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+    // #endregion
+    
+    // Only load if ID changed
+    if (id !== currentIdRef.current) {
+      currentIdRef.current = id;
+      clearCachedMovieId(); // Clear cache for new ID
+      // Reset state when ID changes
+      setMovie(null);
+      setReviews([]);
+      setError(null);
+      loadMovieDetails();
+    } else if (!isLoadingRef.current && (!getCachedMovieId() || !movie)) {
+      // Load if we haven't loaded yet (no cache), OR if state was lost on remount (movie is null but we had cached it)
+      // This handles React StrictMode remounts in development
+      loadMovieDetails();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const loadMovieDetails = async (suppressError = false) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:50',message:'loadMovieDetails called',data:{movieId:id,suppressError,isLoading:isLoadingRef.current},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+    // #endregion
+    
+    // Prevent concurrent loads
+    if (isLoadingRef.current && !suppressError) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:54',message:'Skipping loadMovieDetails - already loading',data:{movieId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+    
+    isLoadingRef.current = true;
     setLoading(true);
     if (!suppressError) {
       setError(null);
     }
     try {
       // Load movie first, then reviews separately so movie can still display if reviews fail
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:37',message:'Calling moviesAPI.getById',data:{movieId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,E'})}).catch(()=>{});
+      // #endregion
       const movieRes = await moviesAPI.getById(id);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:38',message:'Movie API response received',data:{hasData:!!movieRes?.data,hasMovie:!!movieRes?.data?.data?.movie,movieId:movieRes?.data?.data?.movie?._id,tmdbId:movieRes?.data?.data?.movie?.tmdbId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,C'})}).catch(()=>{});
+      // #endregion
       const movieData = movieRes.data.data.movie;
       
       if (!movieData) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:40',message:'Movie data missing from response',data:{movieId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,C'})}).catch(()=>{});
+        // #endregion
         throw new Error('Movie data is missing from response');
       }
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:60',message:'Setting movie state',data:{movieId:movieData._id,tmdbId:movieData.tmdbId,title:movieData.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       setMovie(movieData);
+      setCachedMovieId(); // Mark as loaded in sessionStorage (persists across remounts)
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:63',message:'setMovie called, cached in sessionStorage',data:{movieDataId:movieData._id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       
       // Load reviews separately - don't fail if reviews fail
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:47',message:'Calling reviewsAPI.getMovieReviews',data:{movieId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         const reviewsRes = await reviewsAPI.getMovieReviews(id);
-        setReviews(reviewsRes.data.data.reviews || []);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:48',message:'Reviews API response received',data:{hasData:!!reviewsRes?.data,hasReviews:!!reviewsRes?.data?.data?.reviews,reviewCount:reviewsRes?.data?.data?.reviews?.length,responseStructure:Object.keys(reviewsRes?.data || {}).join(',')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
+        // #endregion
+        // Safely handle response structure
+        if (reviewsRes?.data?.data?.reviews) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:50',message:'Setting reviews from data.data.reviews',data:{reviewCount:reviewsRes.data.data.reviews.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          setReviews(reviewsRes.data.data.reviews);
+        } else if (reviewsRes?.data?.reviews) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:52',message:'Setting reviews from data.reviews',data:{reviewCount:reviewsRes.data.reviews.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          setReviews(reviewsRes.data.reviews);
+        } else {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:54',message:'No reviews found in response, setting empty array',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          setReviews([]);
+        }
       } catch (reviewsErr) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:57',message:'Failed to load reviews',data:{error:reviewsErr?.message,status:reviewsErr?.response?.status,errorData:reviewsErr?.response?.data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         console.warn('Failed to load reviews, continuing with movie:', reviewsErr);
         setReviews([]); // Set empty reviews array
       }
@@ -70,23 +172,28 @@ const MovieDetails = () => {
         }
       }
     } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:79',message:'Error in loadMovieDetails',data:{error:err?.message,status:err?.response?.status,errorData:err?.response?.data,suppressError},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       console.error('Error loading movie details:', err);
       if (!suppressError) {
         const errorMessage = err.response?.data?.error || err.message || 'Failed to load movie details';
         setError(errorMessage);
         setMovie(null); // Clear movie on error
-      } else {
-        // Even when suppressing error, we should clear movie if load fails
-        // This prevents showing stale data
-        console.warn('Failed to load movie details (suppressed):', err);
-        setMovie(null);
-      }
-      // Don't re-throw if suppressError is true
-      if (!suppressError) {
         throw err;
+      } else {
+        // When suppressing error, don't clear movie state - keep existing data
+        // This prevents blank pages when reload fails after review submission
+        console.warn('Failed to reload movie details (suppressed, keeping existing data):', err);
+        // Don't clear movie state - keep what we have
       }
     } finally {
+      isLoadingRef.current = false;
       setLoading(false);
+      // #region agent log
+      const cachedId = getCachedMovieId();
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:115',message:'loadMovieDetails finally block - setLoading(false) called',data:{hasMovie:!!movie,cachedId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
+      // #endregion
     }
   };
 
@@ -101,6 +208,11 @@ const MovieDetails = () => {
   };
 
   const handleSubmitReview = async (reviewData) => {
+    if (!movie) {
+      alert('Movie data is not available. Please refresh the page.');
+      return;
+    }
+    
     try {
       if (editingReview) {
         await reviewsAPI.update(editingReview._id, reviewData);
@@ -116,12 +228,25 @@ const MovieDetails = () => {
       // Reload only reviews instead of entire movie details to avoid TMDB API call
       try {
         const reviewsRes = await reviewsAPI.getMovieReviews(id);
-        setReviews(reviewsRes.data.data.reviews);
+        // Safely handle response structure
+        if (reviewsRes?.data?.data?.reviews) {
+          setReviews(reviewsRes.data.data.reviews);
+        } else if (reviewsRes?.data?.reviews) {
+          setReviews(reviewsRes.data.reviews);
+        } else {
+          // If response structure is unexpected, reload full movie details safely
+          console.warn('Unexpected response structure, reloading movie details');
+          await loadMovieDetails(true); // suppressError = true to avoid showing error
+        }
       } catch (err) {
-        // If review reload fails, don't try full reload - just log the error
-        // The review was saved successfully, and we don't want to risk breaking the page
-        console.warn('Failed to reload reviews after submission:', err);
-        // Optionally, you could add the new review to the local state manually
+        // If review reload fails, reload full movie details as fallback
+        console.warn('Failed to reload reviews after submission, reloading full movie details:', err);
+        try {
+          await loadMovieDetails(true); // suppressError = true to avoid showing error
+        } catch (reloadErr) {
+          console.error('Failed to reload movie details after review submission:', reloadErr);
+          // Don't show error to user since review was saved successfully
+        }
       }
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to save review');
@@ -135,7 +260,15 @@ const MovieDetails = () => {
         // Reload only reviews instead of entire movie details to avoid TMDB API call
         try {
           const reviewsRes = await reviewsAPI.getMovieReviews(id);
-          setReviews(reviewsRes.data.data.reviews);
+          // Safely handle response structure
+          if (reviewsRes?.data?.data?.reviews) {
+            setReviews(reviewsRes.data.data.reviews);
+          } else if (reviewsRes?.data?.reviews) {
+            setReviews(reviewsRes.data.reviews);
+          } else {
+            // If response structure is unexpected, remove from local state
+            setReviews(prevReviews => prevReviews.filter(r => r._id !== reviewId));
+          }
         } catch (err) {
           // If review reload fails, just remove from local state
           // The review was deleted successfully, and we don't want to risk breaking the page
@@ -149,16 +282,35 @@ const MovieDetails = () => {
     }
   };
 
-  // Debug logging
+  // Debug logging - track state changes
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:188',message:'State changed - useEffect triggered',data:{loading,hasError:!!error,hasMovie:!!movie,movieId:id,movieTitle:movie?.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     if (!loading && !error && !movie) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:190',message:'BLANK PAGE CONDITION: No movie, no error, not loading',data:{movieId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       console.error('MovieDetails: Component rendered with no movie, no error, and not loading. ID:', id);
     }
   }, [loading, error, movie, id]);
+  
+  // Track movie state changes specifically
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:198',message:'Movie state changed',data:{hasMovie:!!movie,movieId:movie?._id,movieTitle:movie?.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+  }, [movie]);
 
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:189',message:'Render decision point',data:{loading,hasError:!!error,hasMovie:!!movie,movieId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
   if (loading) return <Loading message="Loading movie details..." />;
   if (error) return <ErrorMessage message={error} onRetry={loadMovieDetails} />;
   if (!movie) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MovieDetails.jsx:191',message:'Rendering movie not found',data:{movieId:id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     return (
       <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center">
         <div className="text-center">
