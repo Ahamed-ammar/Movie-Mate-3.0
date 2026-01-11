@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { usersAPI, reviewsAPI, connectionsAPI } from '../services/api';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { usersAPI, reviewsAPI, connectionsAPI, listsAPI } from '../services/api';
 import ReviewCard from '../components/reviews/ReviewCard';
+import MovieCard from '../components/movies/MovieCard';
 import Loading from '../components/common/Loading';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +11,7 @@ const Profile = () => {
   const { username } = useParams();
   const { user: currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('reviews');
   const [connectionStatus, setConnectionStatus] = useState(null);
@@ -24,6 +26,7 @@ const Profile = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loadingWatchlist, setLoadingWatchlist] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -40,6 +43,19 @@ const Profile = () => {
       loadTabData();
     }
   }, [user, activeTab]);
+
+  // Refresh watchlist when returning from add mode
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('added') === 'true') {
+      // Switch to watchlist tab if not already there
+      if (activeTab !== 'watchlist') {
+        setActiveTab('watchlist');
+      }
+      // Remove the query parameter
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, location.pathname, navigate]);
 
   const loadProfile = async () => {
     setLoading(true);
@@ -83,8 +99,23 @@ const Profile = () => {
           }
           break;
         case 'watchlist':
-          // TODO: Load watchlist
-          setData(prev => ({ ...prev, watchlist: [] }));
+          if (isOwnProfile) {
+            setLoadingWatchlist(true);
+            try {
+              const watchlistRes = await listsAPI.getList('wishlist');
+              setData(prev => ({ 
+                ...prev, 
+                watchlist: watchlistRes.data.data.entries || [] 
+              }));
+            } catch (err) {
+              console.error('Error loading watchlist:', err);
+              setData(prev => ({ ...prev, watchlist: [] }));
+            } finally {
+              setLoadingWatchlist(false);
+            }
+          } else {
+            setData(prev => ({ ...prev, watchlist: [] }));
+          }
           break;
         case 'playlists':
           // TODO: Load playlists
@@ -153,11 +184,10 @@ const Profile = () => {
           await connectionsAPI.sendRequest(user.id);
         }
         await loadConnectionStatus();
-        // Reload network tab if viewing own profile and on network tab
-        if (isOwnProfile && activeTab === 'network') {
-          await loadTabData();
-        } else if (!isOwnProfile && activeTab === 'network') {
-          // If viewing other user's profile and accepting connection, switch to their network
+        // Reload profile to update connection count
+        await loadProfile();
+        // Reload network tab if viewing network tab
+        if (activeTab === 'network') {
           await loadTabData();
         }
       }
@@ -172,6 +202,8 @@ const Profile = () => {
         await connectionsAPI.removeConnection(connectionId);
         await loadTabData();
         await loadConnectionStatus();
+        // Reload profile to update connection count
+        await loadProfile();
       } catch (err) {
         alert(err.response?.data?.error || 'Failed to remove connection');
       }
@@ -204,9 +236,46 @@ const Profile = () => {
           </div>
         );
       case 'watchlist':
+        if (!isOwnProfile) {
+          return (
+            <div className="text-center py-20">
+              <p className="text-gray-400 text-lg">Watchlist is private</p>
+            </div>
+          );
+        }
+
+        if (loadingWatchlist) {
+          return (
+            <div className="text-center py-20">
+              <p className="text-gray-400 text-lg">Loading watchlist...</p>
+            </div>
+          );
+        }
+
         return (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">Watchlist coming soon</p>
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">
+                Watchlist ({data.watchlist.length})
+              </h3>
+              <Link
+                to="/browse?addToWatchlist=true"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-medium"
+              >
+                + Add Movies
+              </Link>
+            </div>
+            {data.watchlist.length === 0 ? (
+              <div className="text-center py-20 bg-gray-800 rounded-lg">
+                <p className="text-gray-400">Your watchlist is empty. Click "Add Movies" to get started.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                {data.watchlist.map((entry) => (
+                  <MovieCard key={entry._id} movie={entry.movieId} />
+                ))}
+              </div>
+            )}
           </div>
         );
       case 'playlists':
@@ -349,6 +418,9 @@ const Profile = () => {
               <span>Joined {new Date(user.joinedDate || user.createdAt).toLocaleDateString()}</span>
               {user.reviewCount !== undefined && (
                 <span>{user.reviewCount} reviews</span>
+              )}
+              {user.connectionCount !== undefined && (
+                <span>{user.connectionCount} {user.connectionCount === 1 ? 'connection' : 'connections'}</span>
               )}
             </div>
           </div>

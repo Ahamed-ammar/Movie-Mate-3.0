@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
  * Uses memoization to prevent unnecessary re-renders
  * Designed specifically for the Films page carousel
  */
-const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber }) => {
+const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber, addToWatchlistMode, onAddToWatchlist, isAdding }) => {
   // Memoize poster URL
   const posterUrl = useMemo(() => getPosterUrl(movie), [movie, getPosterUrl]);
   
@@ -29,11 +29,16 @@ const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber }) =>
     return movie.rating.toFixed(1);
   }, [movie.rating]);
 
-  return (
-    <Link
-      to={`/movie/${id}`}
-      className="group flex-shrink-0 w-44 md:w-52 transition-transform hover:scale-105"
-    >
+  const handleAddClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onAddToWatchlist && !isAdding) {
+      onAddToWatchlist(movie);
+    }
+  };
+
+  const cardContent = (
+    <div className={`group flex-shrink-0 w-44 md:w-52 transition-transform ${addToWatchlistMode ? '' : 'hover:scale-105'}`}>
       <div className="relative">
         {/* Movie Poster */}
         <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-gray-800 mb-2">
@@ -51,6 +56,25 @@ const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber }) =>
             <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
               ⭐ {ratingDisplay}
             </div>
+          )}
+          {addToWatchlistMode && (
+            <button
+              onClick={handleAddClick}
+              disabled={isAdding}
+              className="absolute top-2 left-2 w-10 h-10 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full flex items-center justify-center text-white transition shadow-lg z-10"
+              title="Add to watchlist"
+            >
+              {isAdding ? (
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              )}
+            </button>
           )}
         </div>
 
@@ -82,8 +106,30 @@ const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber }) =>
           {movie.title}
         </h3>
       </div>
+    </div>
+  );
+
+  // In add mode, wrap in Link but ensure button clicks don't navigate
+  const wrappedContent = addToWatchlistMode ? (
+    <Link 
+      to={`/movie/${id}`}
+      onClick={(e) => {
+        // Prevent navigation if clicking the add button
+        if (e.target.closest('button')) {
+          e.preventDefault();
+        }
+      }}
+      className="block"
+    >
+      {cardContent}
+    </Link>
+  ) : (
+    <Link to={`/movie/${id}`}>
+      {cardContent}
     </Link>
   );
+
+  return wrappedContent;
 });
 
 MovieCardInline.displayName = 'MovieCardInline';

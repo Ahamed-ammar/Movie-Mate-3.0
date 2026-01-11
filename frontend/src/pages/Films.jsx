@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
-import { moviesAPI } from '../services/api';
+import { moviesAPI, listsAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { TMDB_IMAGE_BASE_URL } from '../utils/constants';
 import ErrorMessage from '../components/common/ErrorMessage';
 import MovieCardSkeleton from '../components/movies/MovieCardSkeleton';
@@ -10,11 +11,14 @@ import PopularReviewsSection from '../components/reviews/PopularReviewsSection';
 
 const Films = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   
   // Initialize state from URL params
   const getInitialYear = () => searchParams.get('year') || '';
   const getInitialGenre = () => searchParams.get('genre') || '';
   const getInitialRating = () => searchParams.get('rating') || '';
+  const addToWatchlistMode = searchParams.get('addToWatchlist') === 'true';
   
   const [popularMovies, setPopularMovies] = useState([]);
   const [genres, setGenres] = useState([]);
@@ -25,6 +29,7 @@ const Films = () => {
   const [selectedYear, setSelectedYear] = useState(getInitialYear());
   const [selectedGenre, setSelectedGenre] = useState(getInitialGenre());
   const [selectedRating, setSelectedRating] = useState(getInitialRating());
+  const [addingMovies, setAddingMovies] = useState(new Set());
   const scrollContainerRef = useRef(null);
   const errorTimeoutRef = useRef(null);
   const retryCountRef = useRef({ year: 0, genre: 0, rating: 0 });
@@ -201,8 +206,12 @@ const Films = () => {
     if (year) params.set('year', year);
     if (genre) params.set('genre', genre);
     if (rating) params.set('rating', rating);
+    // Preserve addToWatchlist parameter if it exists
+    if (searchParams.get('addToWatchlist') === 'true') {
+      params.set('addToWatchlist', 'true');
+    }
     setSearchParams(params, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, searchParams]);
 
   const handleSearch = useCallback(async (e) => {
     e.preventDefault();
@@ -278,6 +287,62 @@ const Films = () => {
     updateURLParams('', '', '');
     loadInitialData();
   }, [loadInitialData, updateURLParams]);
+
+  const handleAddToWatchlist = useCallback(async (movie) => {
+    if (!isAuthenticated) {
+      alert('Please login to add movies to your watchlist');
+      return;
+    }
+
+    const movieId = movie.tmdbId || movie.id || movie._id;
+    setAddingMovies(prev => new Set(prev).add(movieId));
+
+    try {
+      // First, get or cache the movie
+      let movieData = movie;
+      
+      // If movie doesn't have _id, we need to get it from the backend
+      // The backend will cache it if needed
+      if (!movie._id && movie.tmdbId) {
+        try {
+          const movieRes = await moviesAPI.getById(movie.tmdbId);
+          movieData = movieRes.data.data.movie;
+        } catch (err) {
+          // If movie not found, try to add with tmdbId and let backend handle caching
+          movieData = movie;
+        }
+      }
+
+      // Add to watchlist
+      await listsAPI.add({
+        movieId: movieData._id || movieData.id,
+        tmdbId: movie.tmdbId || movie.id,
+        listType: 'wishlist' // watchlist is typically called wishlist in the system
+      });
+
+      // Navigate back to profile watchlist tab if coming from there
+      const fromProfile = document.referrer.includes('/profile/');
+      if (fromProfile && user) {
+        navigate(`/profile/${user.username}?added=true&tab=watchlist`, { replace: false });
+        // The Profile component will handle the refresh and tab switch
+      } else {
+        alert('Movie added to watchlist!');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Failed to add movie to watchlist';
+      if (errorMsg.includes('already exists')) {
+        alert('Movie is already in your watchlist');
+      } else {
+        alert(errorMsg);
+      }
+    } finally {
+      setAddingMovies(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(movieId);
+        return newSet;
+      });
+    }
+  }, [isAuthenticated]);
 
   // Load genres on mount
   useEffect(() => {
@@ -500,13 +565,27 @@ const Films = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">
-              {searchQuery.trim() 
+              {addToWatchlistMode 
+                ? 'ADD MOVIES TO WATCHLIST'
+                : searchQuery.trim() 
                 ? `SEARCH RESULTS FOR "${searchQuery.toUpperCase()}"` 
                 : 'POPULAR FILMS THIS WEEK'}
             </h2>
-            {!searchQuery.trim() && (
+            {!searchQuery.trim() && !addToWatchlistMode && (
               <button className="text-gray-400 hover:text-white transition text-sm">
                 MORE
+              </button>
+            )}
+            {addToWatchlistMode && (
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams(searchParams);
+                  params.delete('addToWatchlist');
+                  setSearchParams(params, { replace: true });
+                }}
+                className="text-gray-400 hover:text-white transition text-sm"
+              >
+                Exit Add Mode
               </button>
             )}
           </div>
@@ -563,6 +642,9 @@ const Films = () => {
                     getPosterUrl={getPosterUrl}
                     movieId={movieId}
                     formatNumber={formatNumber}
+                    addToWatchlistMode={addToWatchlistMode}
+                    onAddToWatchlist={handleAddToWatchlist}
+                    isAdding={addingMovies.has(movieId(movie))}
                   />
                 ))}
               </div>

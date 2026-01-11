@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import Review from '../models/Review.js';
+import Network from '../models/Network.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // @desc    Get user profile by username
@@ -25,6 +26,15 @@ export const getUserProfile = asyncHandler(async (req, res) => {
 
   const reviewCount = await Review.countDocuments(reviewQuery);
 
+  // Get user's connection count (accepted connections only)
+  const connectionCount = await Network.countDocuments({
+    status: 'accepted',
+    $or: [
+      { requesterId: user._id },
+      { receiverId: user._id }
+    ]
+  });
+
   res.json({
     success: true,
     data: {
@@ -34,7 +44,8 @@ export const getUserProfile = asyncHandler(async (req, res) => {
         bio: user.bio,
         profilePicture: user.profilePicture,
         joinedDate: user.joinedDate,
-        reviewCount
+        reviewCount,
+        connectionCount
       }
     }
   });
