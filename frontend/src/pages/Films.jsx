@@ -19,6 +19,7 @@ const Films = () => {
   const getInitialGenre = () => searchParams.get('genre') || '';
   const getInitialRating = () => searchParams.get('rating') || '';
   const addToWatchlistMode = searchParams.get('addToWatchlist') === 'true';
+  const addToPlaylistMode = searchParams.get('addToPlaylist') === 'true' || searchParams.get('addToPlaylist');
   
   const [popularMovies, setPopularMovies] = useState([]);
   const [genres, setGenres] = useState([]);
@@ -210,6 +211,16 @@ const Films = () => {
     if (searchParams.get('addToWatchlist') === 'true') {
       params.set('addToWatchlist', 'true');
     }
+    // Preserve addToPlaylist parameter if it exists
+    const addToPlaylist = searchParams.get('addToPlaylist');
+    if (addToPlaylist) {
+      params.set('addToPlaylist', addToPlaylist);
+    }
+    // Preserve returnTo parameter if it exists
+    const returnTo = searchParams.get('returnTo');
+    if (returnTo) {
+      params.set('returnTo', returnTo);
+    }
     setSearchParams(params, { replace: true });
   }, [setSearchParams, searchParams]);
 
@@ -342,7 +353,87 @@ const Films = () => {
         return newSet;
       });
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user, navigate]);
+
+  const handleAddToPlaylist = useCallback(async (movie) => {
+    if (!isAuthenticated) {
+      alert('Please login to add movies to playlist');
+      return;
+    }
+
+    const movieId = movie.tmdbId || movie.id || movie._id;
+    setAddingMovies(prev => new Set(prev).add(movieId));
+
+    try {
+      // Get or cache the movie
+      let movieData = movie;
+      
+      if (!movie._id && movie.tmdbId) {
+        try {
+          const movieRes = await moviesAPI.getById(movie.tmdbId);
+          movieData = movieRes.data.data.movie;
+        } catch (err) {
+          movieData = movie;
+        }
+      }
+
+      const playlistId = searchParams.get('addToPlaylist');
+      
+      // Store movie in localStorage for new playlists (when addToPlaylist is 'true')
+      if (playlistId === 'true') {
+        try {
+          const tempPlaylist = JSON.parse(localStorage.getItem('tempPlaylist') || '{}');
+          const selectedMovies = tempPlaylist.selectedMovies || [];
+          
+          // Check if movie already exists
+          const exists = selectedMovies.some(
+            m => (m._id && movieData._id && m._id === movieData._id) ||
+                 (m.tmdbId && movieData.tmdbId && m.tmdbId === movieData.tmdbId) ||
+                 (m.id && movieData.id && m.id === movieData.id)
+          );
+          
+          if (!exists) {
+            selectedMovies.push({
+              _id: movieData._id,
+              tmdbId: movieData.tmdbId || movieData.id,
+              id: movieData.id,
+              title: movieData.title,
+              poster: movieData.poster || movieData.poster_path
+            });
+            
+            localStorage.setItem('tempPlaylist', JSON.stringify({
+              ...tempPlaylist,
+              selectedMovies
+            }));
+            
+            alert('Movie added! Return to the playlist form to see it.');
+          } else {
+            alert('Movie is already in the playlist');
+          }
+        } catch (err) {
+          console.error('Error saving to localStorage:', err);
+          alert('Failed to add movie');
+        }
+      } else if (playlistId && playlistId !== 'true') {
+        // Add to existing playlist
+        await playlistsAPI.addMovies(playlistId, [{
+          _id: movieData._id,
+          tmdbId: movieData.tmdbId || movieData.id,
+          id: movieData.id
+        }]);
+        alert('Movie added to playlist!');
+      }
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Failed to add movie to playlist';
+      alert(errorMsg);
+    } finally {
+      setAddingMovies(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(movieId);
+        return newSet;
+      });
+    }
+  }, [isAuthenticated, searchParams, navigate]);
 
   // Load genres on mount
   useEffect(() => {
@@ -440,6 +531,22 @@ const Films = () => {
       loadInitialData();
     }
   }, [selectedYear, selectedGenre, selectedRating, searchQuery, debouncedLoadFiltered, loadInitialData]);
+
+  // Handle browser back button when in add mode
+  const prevAddModeRef = useRef(addToPlaylistMode || addToWatchlistMode);
+  useEffect(() => {
+    const returnTo = searchParams.get('returnTo');
+    const isInAddMode = addToPlaylistMode || addToWatchlistMode;
+    const wasInAddMode = prevAddModeRef.current;
+    
+    // If we transitioned from add mode to non-add mode, and returnTo exists, navigate there
+    if (wasInAddMode && !isInAddMode && returnTo) {
+      navigate(decodeURIComponent(returnTo), { replace: true });
+    }
+    
+    // Update ref for next render
+    prevAddModeRef.current = isInAddMode;
+  }, [addToPlaylistMode, addToWatchlistMode, searchParams, navigate]);
 
   return (
     <div className="min-h-screen bg-[#0f0f0f]">
@@ -567,26 +674,73 @@ const Films = () => {
             <h2 className="text-2xl font-bold text-white">
               {addToWatchlistMode 
                 ? 'ADD MOVIES TO WATCHLIST'
+                : addToPlaylistMode
+                ? 'ADD MOVIES TO PLAYLIST'
                 : searchQuery.trim() 
                 ? `SEARCH RESULTS FOR "${searchQuery.toUpperCase()}"` 
                 : 'POPULAR FILMS THIS WEEK'}
             </h2>
-            {!searchQuery.trim() && !addToWatchlistMode && (
+            {!searchQuery.trim() && !addToWatchlistMode && !addToPlaylistMode && (
               <button className="text-gray-400 hover:text-white transition text-sm">
                 MORE
               </button>
             )}
-            {addToWatchlistMode && (
-              <button
-                onClick={() => {
-                  const params = new URLSearchParams(searchParams);
-                  params.delete('addToWatchlist');
-                  setSearchParams(params, { replace: true });
-                }}
-                className="text-gray-400 hover:text-white transition text-sm"
-              >
-                Exit Add Mode
-              </button>
+            {(addToWatchlistMode || addToPlaylistMode) && (
+              <div className="flex items-center gap-3">
+                {addToPlaylistMode && (
+                  <button
+                    onClick={() => {
+                      const playlistId = searchParams.get('addToPlaylist');
+                      const returnTo = searchParams.get('returnTo');
+                      
+                      if (playlistId === 'true') {
+                        // New playlist - navigate back to playlist form
+                        if (returnTo) {
+                          navigate(decodeURIComponent(returnTo));
+                        } else {
+                          // Fallback: navigate to profile
+                          if (user && user.username) {
+                            navigate(`/profile/${user.username}`);
+                          } else {
+                            navigate('/');
+                          }
+                        }
+                      } else if (playlistId && playlistId !== 'true') {
+                        // Existing playlist - navigate to playlist details page
+                        navigate(`/playlist/${playlistId}`);
+                      } else {
+                        // Fallback: just exit add mode
+                        const params = new URLSearchParams(searchParams);
+                        params.delete('addToPlaylist');
+                        params.delete('returnTo');
+                        setSearchParams(params, { replace: true });
+                      }
+                    }}
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-medium"
+                  >
+                    Done
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    const returnTo = searchParams.get('returnTo');
+                    if (returnTo) {
+                      // Navigate back to the return URL (e.g., profile page)
+                      navigate(decodeURIComponent(returnTo));
+                    } else {
+                      // If no return URL, just remove the add mode params
+                      const params = new URLSearchParams(searchParams);
+                      params.delete('addToWatchlist');
+                      params.delete('addToPlaylist');
+                      params.delete('returnTo');
+                      setSearchParams(params, { replace: true });
+                    }
+                  }}
+                  className="text-gray-400 hover:text-white transition text-sm"
+                >
+                  Exit Add Mode
+                </button>
+              </div>
             )}
           </div>
 
@@ -644,6 +798,8 @@ const Films = () => {
                     formatNumber={formatNumber}
                     addToWatchlistMode={addToWatchlistMode}
                     onAddToWatchlist={handleAddToWatchlist}
+                    addToPlaylistMode={addToPlaylistMode}
+                    onAddToPlaylist={handleAddToPlaylist}
                     isAdding={addingMovies.has(movieId(movie))}
                   />
                 ))}

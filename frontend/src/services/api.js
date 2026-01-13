@@ -124,4 +124,16 @@ export const connectionsAPI = {
   removeConnection: (connectionId) => api.delete(`/connections/${connectionId}`)
 };
 
+// Playlists API
+export const playlistsAPI = {
+  getPlaylists: (username) => api.get('/playlists', { params: username ? { username } : {} }),
+  getUserPlaylists: (userId) => api.get(`/playlists/user/${userId}`),
+  getPlaylist: (id) => api.get(`/playlists/${id}`),
+  create: (data) => api.post('/playlists', data),
+  update: (id, data) => api.put(`/playlists/${id}`, data),
+  delete: (id) => api.delete(`/playlists/${id}`),
+  addMovies: (id, movieIds) => api.post(`/playlists/${id}/movies`, { movieIds }),
+  removeMovie: (id, movieId) => api.delete(`/playlists/${id}/movies/${movieId}`)
+};
+
 export default api;

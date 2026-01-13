@@ -15,6 +15,7 @@ import movieRoutes from './routes/movieRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import listRoutes from './routes/listRoutes.js';
 import connectionRoutes from './routes/connectionRoutes.js';
+import playlistRoutes from './routes/playlistRoutes.js';
 
 // Connect to database
 connectDB();
@@ -38,6 +39,7 @@ app.use('/api/movies', movieRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/lists', listRoutes);
 app.use('/api/connections', connectionRoutes);
+app.use('/api/playlists', playlistRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

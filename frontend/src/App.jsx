@@ -13,6 +13,7 @@ import Profile from './pages/Profile';
 import MyLists from './pages/MyLists';
 import Members from './pages/Members';
 import Journal from './pages/Journal';
+import PlaylistDetails from './pages/PlaylistDetails';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/movie/:id" element={<MovieDetails />} />
+              <Route path="/playlist/:id" element={<PlaylistDetails />} />
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/members" element={<Members />} />
               <Route path="/journal" element={<Journal />} />

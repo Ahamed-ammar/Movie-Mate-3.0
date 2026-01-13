@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { usersAPI, reviewsAPI, connectionsAPI, listsAPI } from '../services/api';
+import { usersAPI, reviewsAPI, connectionsAPI, listsAPI, playlistsAPI } from '../services/api';
 import ReviewCard from '../components/reviews/ReviewCard';
 import MovieCard from '../components/movies/MovieCard';
+import PlaylistCard from '../components/playlists/PlaylistCard';
+import PlaylistForm from '../components/playlists/PlaylistForm';
 import Loading from '../components/common/Loading';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { useAuth } from '../contexts/AuthContext';
@@ -117,10 +119,31 @@ const Profile = () => {
             setData(prev => ({ ...prev, watchlist: [] }));
           }
           break;
-        case 'playlists':
-          // TODO: Load playlists
-          setData(prev => ({ ...prev, playlists: [] }));
-          break;
+      case 'playlists':
+        if (isOwnProfile) {
+          try {
+            const playlistsRes = await playlistsAPI.getPlaylists();
+            setData(prev => ({ 
+              ...prev, 
+              playlists: playlistsRes.data.data.playlists || [] 
+            }));
+          } catch (err) {
+            console.error('Error loading playlists:', err);
+            setData(prev => ({ ...prev, playlists: [] }));
+          }
+        } else {
+          try {
+            const playlistsRes = await playlistsAPI.getUserPlaylists(user.id);
+            setData(prev => ({ 
+              ...prev, 
+              playlists: playlistsRes.data.data.playlists || [] 
+            }));
+          } catch (err) {
+            console.error('Error loading playlists:', err);
+            setData(prev => ({ ...prev, playlists: [] }));
+          }
+        }
+        break;
         case 'likes':
           // TODO: Load likes
           setData(prev => ({ ...prev, likes: [] }));
@@ -219,6 +242,125 @@ const Profile = () => {
     { id: 'network', label: 'Network' }
   ];
 
+  const PlaylistsTab = ({ playlists, isOwnProfile, onPlaylistCreated, onPlaylistDeleted }) => {
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [editingPlaylist, setEditingPlaylist] = useState(null);
+    const playlistLocation = useLocation();
+    const playlistNavigate = useNavigate();
+
+    // Hide form when returning from add mode
+    useEffect(() => {
+      const searchParams = new URLSearchParams(playlistLocation.search);
+      if (searchParams.get('hideForm') === 'true') {
+        setShowCreateForm(false);
+        setEditingPlaylist(null);
+        // Remove the query parameter
+        playlistNavigate(playlistLocation.pathname, { replace: true });
+      }
+    }, [playlistLocation.search, playlistLocation.pathname, playlistNavigate]);
+
+    const handleCreatePlaylist = async (playlistData) => {
+      try {
+        await playlistsAPI.create(playlistData);
+        setShowCreateForm(false);
+        onPlaylistCreated();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to create playlist');
+      }
+    };
+
+    const handleUpdatePlaylist = async (playlistData) => {
+      try {
+        await playlistsAPI.update(editingPlaylist._id, playlistData);
+        setEditingPlaylist(null);
+        onPlaylistCreated();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to update playlist');
+      }
+    };
+
+    const handleDeletePlaylist = async (playlistId) => {
+      try {
+        await playlistsAPI.delete(playlistId);
+        onPlaylistDeleted();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to delete playlist');
+      }
+    };
+
+    if (editingPlaylist) {
+      return (
+        <div>
+          <button
+            onClick={() => setEditingPlaylist(null)}
+            className="mb-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition text-sm font-medium"
+          >
+            ← Back to Playlists
+          </button>
+          <PlaylistForm
+            playlist={editingPlaylist}
+            onSubmit={handleUpdatePlaylist}
+            onCancel={() => setEditingPlaylist(null)}
+          />
+        </div>
+      );
+    }
+
+    if (showCreateForm) {
+      return (
+        <div>
+          <button
+            onClick={() => setShowCreateForm(false)}
+            className="mb-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition text-sm font-medium"
+          >
+            ← Back to Playlists
+          </button>
+          <PlaylistForm
+            onSubmit={handleCreatePlaylist}
+            onCancel={() => setShowCreateForm(false)}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        {isOwnProfile && (
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-white">
+              Playlists ({playlists.length})
+            </h3>
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-medium"
+            >
+              + Create Playlist
+            </button>
+          </div>
+        )}
+        {playlists.length === 0 ? (
+          <div className="text-center py-20 bg-gray-800 rounded-lg">
+            <p className="text-gray-400">
+              {isOwnProfile 
+                ? 'You have no playlists yet. Click "Create Playlist" to get started.'
+                : 'This user has no playlists yet.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {playlists.map((playlist) => (
+              <PlaylistCard
+                key={playlist._id}
+                playlist={playlist}
+                isOwnPlaylist={isOwnProfile}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'reviews':
@@ -280,9 +422,12 @@ const Profile = () => {
         );
       case 'playlists':
         return (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">Playlists coming soon</p>
-          </div>
+          <PlaylistsTab 
+            playlists={data.playlists}
+            isOwnProfile={isOwnProfile}
+            onPlaylistCreated={loadTabData}
+            onPlaylistDeleted={loadTabData}
+          />
         );
       case 'likes':
         return (

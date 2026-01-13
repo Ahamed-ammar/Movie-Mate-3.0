@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
  * Uses memoization to prevent unnecessary re-renders
  * Designed specifically for the Films page carousel
  */
-const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber, addToWatchlistMode, onAddToWatchlist, isAdding }) => {
+const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber, addToWatchlistMode, onAddToWatchlist, addToPlaylistMode, onAddToPlaylist, isAdding }) => {
   // Memoize poster URL
   const posterUrl = useMemo(() => getPosterUrl(movie), [movie, getPosterUrl]);
   
@@ -32,13 +32,15 @@ const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber, addT
   const handleAddClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (onAddToWatchlist && !isAdding) {
+    if (addToPlaylistMode && onAddToPlaylist && !isAdding) {
+      onAddToPlaylist(movie);
+    } else if (addToWatchlistMode && onAddToWatchlist && !isAdding) {
       onAddToWatchlist(movie);
     }
   };
 
   const cardContent = (
-    <div className={`group flex-shrink-0 w-44 md:w-52 transition-transform ${addToWatchlistMode ? '' : 'hover:scale-105'}`}>
+    <div className={`group flex-shrink-0 w-44 md:w-52 transition-transform ${(addToWatchlistMode || addToPlaylistMode) ? '' : 'hover:scale-105'}`}>
       <div className="relative">
         {/* Movie Poster */}
         <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-gray-800 mb-2">
@@ -57,12 +59,12 @@ const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber, addT
               ⭐ {ratingDisplay}
             </div>
           )}
-          {addToWatchlistMode && (
+          {(addToWatchlistMode || addToPlaylistMode) && (
             <button
               onClick={handleAddClick}
               disabled={isAdding}
               className="absolute top-2 left-2 w-10 h-10 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-full flex items-center justify-center text-white transition shadow-lg z-10"
-              title="Add to watchlist"
+              title={addToPlaylistMode ? "Add to playlist" : "Add to watchlist"}
             >
               {isAdding ? (
                 <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -110,7 +112,7 @@ const MovieCardInline = memo(({ movie, getPosterUrl, movieId, formatNumber, addT
   );
 
   // In add mode, wrap in Link but ensure button clicks don't navigate
-  const wrappedContent = addToWatchlistMode ? (
+  const wrappedContent = (addToWatchlistMode || addToPlaylistMode) ? (
     <Link 
       to={`/movie/${id}`}
       onClick={(e) => {
