@@ -93,6 +93,7 @@ export const moviesAPI = {
   getByYear: (year, page = 1) => api.get(`/movies/year/${year}`, { params: { page } }),
   getByProvider: (providerId, page = 1) => api.get(`/movies/provider/${providerId}`, { params: { page } }),
   getByFilter: (filterType, page = 1) => api.get(`/movies/filter/${filterType}`, { params: { page } }),
+  getByPerson: (personName, role, page = 1) => api.get(`/movies/person/${encodeURIComponent(personName)}`, { params: { role, page } }),
   getGenres: () => api.get('/movies/genres'),
   getProviders: () => api.get('/movies/providers')
 };

@@ -152,8 +152,8 @@ const PlaylistDetails = () => {
           </div>
         )}
 
-        {/* Movies Grid */}
-        {movieList.length === 0 ? (
+        {/* Movies Grid - Only show when not editing */}
+        {!showEditForm && (movieList.length === 0 ? (
           <div className="text-center py-20 bg-gray-800 rounded-lg">
             <p className="text-gray-400 text-lg mb-4">This playlist is empty</p>
             {isOwnPlaylist && (
@@ -194,7 +194,7 @@ const PlaylistDetails = () => {
               ))}
             </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

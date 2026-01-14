@@ -10,7 +10,8 @@ import {
   getGenresList,
   getProvidersList,
   getByProvider,
-  getByFilter
+  getByFilter,
+  getByPerson
 } from '../controllers/movieController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -25,6 +26,7 @@ router.get('/genre/:genreId', getByGenre);
 router.get('/year/:year', getByYear);
 router.get('/provider/:providerId', getByProvider);
 router.get('/filter/:filterType', getByFilter);
+router.get('/person/:personName', getByPerson);
 router.get('/:id', getMovieById);
 router.post('/cache', protect, cacheMovie);
 

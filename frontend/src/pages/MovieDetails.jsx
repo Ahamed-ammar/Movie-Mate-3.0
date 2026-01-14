@@ -395,7 +395,11 @@ const MovieDetails = () => {
             {movie.director && (
               <div className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4 text-white">Director</h2>
-                <div className="flex items-center space-x-4">
+                <div 
+                  className="flex items-center space-x-4 cursor-pointer hover:bg-gray-700/30 p-3 rounded-lg transition"
+                  onClick={() => navigate(`/person/${encodeURIComponent(movie.director.name)}?role=crew`)}
+                  title={`View movies directed by ${movie.director.name}`}
+                >
                   {movie.director.profile_path && (
                     <img
                       src={movie.director.profile_path}
@@ -407,7 +411,7 @@ const MovieDetails = () => {
                     />
                   )}
                   <div>
-                    <h3 className="text-xl font-semibold text-white">{movie.director.name}</h3>
+                    <h3 className="text-xl font-semibold text-white hover:text-primary-400 transition">{movie.director.name}</h3>
                     <p className="text-gray-400">Director</p>
                   </div>
                 </div>
@@ -420,7 +424,12 @@ const MovieDetails = () => {
                 <h2 className="text-2xl font-semibold mb-4 text-white">Cast</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {movie.actors.map((actor, index) => (
-                    <div key={index} className="text-center">
+                    <div 
+                      key={index} 
+                      className="text-center cursor-pointer hover:scale-105 transition transform"
+                      onClick={() => navigate(`/person/${encodeURIComponent(actor.name)}?role=cast`)}
+                      title={`View movies starring ${actor.name}`}
+                    >
                       {actor.profile_path ? (
                         <img
                           src={actor.profile_path}
@@ -435,7 +444,7 @@ const MovieDetails = () => {
                           <span className="text-gray-500 text-sm">No Photo</span>
                         </div>
                       )}
-                      <h3 className="font-semibold text-white text-sm mb-1">{actor.name}</h3>
+                      <h3 className="font-semibold text-white text-sm mb-1 hover:text-primary-400 transition">{actor.name}</h3>
                       <p className="text-gray-400 text-xs">{actor.character}</p>
                     </div>
                   ))}

@@ -12,7 +12,9 @@ import {
   getWatchProviders,
   getMoviesByProvider,
   getMoviesByFilter,
-  transformMovieData
+  transformMovieData,
+  searchPerson,
+  getPersonMovieCredits
 } from '../services/tmdbService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -409,6 +411,80 @@ export const getByFilter = asyncHandler(async (req, res) => {
       movies,
       page: results.page,
       totalPages: results.total_pages
+    }
+  });
+});
+
+// @desc    Get movies by person (actor/director)
+// @route   GET /api/movies/person/:personName
+// @access  Public
+export const getByPerson = asyncHandler(async (req, res) => {
+  const { personName } = req.params;
+  const { page = 1, role } = req.query; // role can be 'cast' or 'crew'
+
+  // First, search for the person by name
+  const personResults = await searchPerson(personName);
+  
+  if (!personResults.results || personResults.results.length === 0) {
+    return res.json({
+      success: true,
+      data: {
+        movies: [],
+        page: 1,
+        totalPages: 0,
+        person: null
+      }
+    });
+  }
+
+  // Get the first matching person
+  const person = personResults.results[0];
+  
+  // Get their movie credits
+  const credits = await getPersonMovieCredits(person.id);
+  
+  let movies = [];
+  
+  if (role === 'cast') {
+    // Get movies where they acted
+    movies = credits.cast || [];
+  } else if (role === 'crew') {
+    // Get movies where they were crew (director, writer, etc.)
+    movies = credits.crew || [];
+  } else {
+    // Get all their movies (both cast and crew)
+    movies = [...(credits.cast || []), ...(credits.crew || [])];
+  }
+  
+  // Remove duplicates by movie id (person might have multiple roles in same movie)
+  const uniqueMoviesMap = new Map();
+  movies.forEach(movie => {
+    if (!uniqueMoviesMap.has(movie.id)) {
+      uniqueMoviesMap.set(movie.id, movie);
+    }
+  });
+  movies = Array.from(uniqueMoviesMap.values());
+  
+  // Sort by popularity
+  movies.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  
+  const startIndex = (page - 1) * 20;
+  const endIndex = startIndex + 20;
+  const paginatedMovies = movies.slice(startIndex, endIndex);
+  
+  const transformedMovies = paginatedMovies.map(movie => transformMovieData(movie));
+
+  res.json({
+    success: true,
+    data: {
+      movies: transformedMovies,
+      page: parseInt(page),
+      totalPages: Math.ceil(movies.length / 20),
+      person: {
+        id: person.id,
+        name: person.name,
+        profile_path: person.profile_path ? `https://image.tmdb.org/t/p/w200${person.profile_path}` : null
+      }
     }
   });
 });

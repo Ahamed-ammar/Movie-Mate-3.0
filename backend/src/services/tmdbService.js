@@ -305,6 +305,39 @@ export const getMoviesByFilter = async (filterType, page = 1) => {
 };
 
 // Transform TMDB movie data to our format
+// Search for a person by name
+export const searchPerson = async (query) => {
+  if (!query || query.trim().length === 0) {
+    throw new Error('Person name cannot be empty');
+  }
+  
+  try {
+    const response = await tmdbAPI.get('/search/person', {
+      params: {
+        query: query.trim(),
+        page: 1
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw handleTMDBError(error, 'searchPerson');
+  }
+};
+
+// Get person's movie credits by person ID
+export const getPersonMovieCredits = async (personId) => {
+  if (!personId) {
+    throw new Error('Person ID is required');
+  }
+  
+  try {
+    const response = await tmdbAPI.get(`/person/${personId}/movie_credits`);
+    return response.data;
+  } catch (error) {
+    throw handleTMDBError(error, 'getPersonMovieCredits');
+  }
+};
+
 export const transformMovieData = (tmdbMovie) => {
   return {
     tmdbId: tmdbMovie.id,
