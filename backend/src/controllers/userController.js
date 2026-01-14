@@ -51,6 +51,72 @@ export const getUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get all users
+// @route   GET /api/users
+// @access  Public
+export const getAllUsers = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, search } = req.query;
+  const currentUserId = req.user?.userId;
+
+  // Build query
+  const query = {};
+  if (search) {
+    query.username = { $regex: search, $options: 'i' };
+  }
+
+  // Get users with pagination
+  const skip = (page - 1) * limit;
+  const users = await User.find(query)
+    .select('-password -refreshToken -email')
+    .sort({ joinedDate: -1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+
+  const totalUsers = await User.countDocuments(query);
+
+  // Get connection status for each user if current user is logged in
+  let usersWithConnectionStatus = await Promise.all(users.map(async (user) => {
+    const userObj = {
+      id: user._id,
+      username: user.username,
+      bio: user.bio,
+      profilePicture: user.profilePicture,
+      joinedDate: user.joinedDate,
+      connectionStatus: null,
+      connectionId: null
+    };
+
+    if (currentUserId && currentUserId !== user._id.toString()) {
+      // Check if there's a connection between current user and this user
+      const connection = await Network.findOne({
+        $or: [
+          { requesterId: currentUserId, receiverId: user._id },
+          { requesterId: user._id, receiverId: currentUserId }
+        ]
+      });
+
+      if (connection) {
+        userObj.connectionStatus = connection.status;
+        userObj.connectionId = connection._id;
+        // Determine if current user is the requester
+        userObj.isRequester = connection.requesterId.toString() === currentUserId;
+      }
+    }
+
+    return userObj;
+  }));
+
+  res.json({
+    success: true,
+    data: {
+      users: usersWithConnectionStatus,
+      page: parseInt(page),
+      totalPages: Math.ceil(totalUsers / limit),
+      totalUsers
+    }
+  });
+});
+
 // @desc    Update user profile
 // @route   PUT /api/users/profile
 // @access  Private

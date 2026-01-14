@@ -124,6 +124,7 @@ export const listsAPI = {
 
 // Users API
 export const usersAPI = {
+  getAll: (page = 1, search = '') => api.get('/users', { params: { page, search } }),
   getProfile: (username) => api.get(`/users/${username}`),
   updateProfile: (data) => api.put('/users/profile', data)
 };

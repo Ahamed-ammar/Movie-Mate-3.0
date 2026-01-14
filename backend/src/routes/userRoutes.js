@@ -1,12 +1,14 @@
 import express from 'express';
 import {
   getUserProfile,
-  updateProfile
+  updateProfile,
+  getAllUsers
 } from '../controllers/userController.js';
-import { protect } from '../middleware/auth.js';
+import { protect, optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+router.get('/', optionalAuth, getAllUsers);
 router.get('/:username', getUserProfile);
 router.put('/profile', protect, updateProfile);
 

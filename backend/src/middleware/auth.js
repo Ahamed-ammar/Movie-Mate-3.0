@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-// Verify access token
+// Verify access token (required)
 export const protect = asyncHandler(async (req, res, next) => {
   let token;
 
@@ -27,6 +27,27 @@ export const protect = asyncHandler(async (req, res, next) => {
     });
   }
 });
+
+// Optional authentication (proceed with or without token)
+export const optionalAuth = (req, res, next) => {
+  let token;
+
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+      req.user = decoded;
+    } catch (error) {
+      // Token invalid, but continue without user
+      req.user = null;
+    }
+  }
+
+  next();
+};
 
 // Generate access token
 export const generateAccessToken = (userId) => {
