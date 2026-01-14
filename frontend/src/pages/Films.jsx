@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
-import { moviesAPI, listsAPI } from '../services/api';
+import { moviesAPI, listsAPI, playlistsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { TMDB_IMAGE_BASE_URL } from '../utils/constants';
 import ErrorMessage from '../components/common/ErrorMessage';
@@ -90,6 +90,9 @@ const Films = () => {
   }, []);
 
   const loadInitialData = useCallback(async (retry = false) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:92',message:'loadInitialData called',data:{retry,isAuthenticated},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     setLoading(true);
     setError(null);
     setShowError(false);
@@ -100,10 +103,16 @@ const Films = () => {
     }
     
     try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:103',message:'Calling moviesAPI.getPopular and getGenres',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       const [popularRes, genresRes] = await Promise.all([
         moviesAPI.getPopular(1),
         moviesAPI.getGenres()
       ]);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:107',message:'API calls successful',data:{popularCount:popularRes?.data?.data?.movies?.length,genresCount:genresRes?.data?.data?.genres?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       setPopularMovies(popularRes.data.data.movies.slice(0, 20));
       setGenres(genresRes.data.data.genres || []);
       setLoading(false);
@@ -111,6 +120,9 @@ const Films = () => {
       // Reset retry counters on success
       retryCountRef.current = { year: 0, genre: 0, rating: 0 };
     } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:114',message:'Error loading data',data:{status:err.response?.status,error:err.response?.data?.error,message:err.message,url:err.config?.url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'})}).catch(()=>{});
+      // #endregion
       console.error('Error loading data:', err);
       const errorMessage = err.response?.data?.error || err.message || 'Failed to load movies. Please try again later.';
       setError(errorMessage);
@@ -356,6 +368,9 @@ const Films = () => {
   }, [isAuthenticated, user, navigate]);
 
   const handleAddToPlaylist = useCallback(async (movie) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:358',message:'handleAddToPlaylist called',data:{hasMovie:!!movie,movieId:movie?.tmdbId||movie?.id||movie?._id,has_id:!!movie._id,hasTmdbId:!!movie.tmdbId,hasId:!!movie.id,isAuthenticated},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     if (!isAuthenticated) {
       alert('Please login to add movies to playlist');
       return;
@@ -367,17 +382,33 @@ const Films = () => {
     try {
       // Get or cache the movie
       let movieData = movie;
+      const tmdbId = movie.tmdbId || movie.id;
       
-      if (!movie._id && movie.tmdbId) {
+      // If movie doesn't have _id (not in database), try to get/cache it
+      if (!movie._id && tmdbId) {
         try {
-          const movieRes = await moviesAPI.getById(movie.tmdbId);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:375',message:'Fetching movie by ID',data:{tmdbId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+          const movieRes = await moviesAPI.getById(tmdbId);
           movieData = movieRes.data.data.movie;
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:377',message:'Movie fetched successfully',data:{has_id:!!movieData._id,hasTmdbId:!!movieData.tmdbId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
         } catch (err) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:378',message:'Failed to fetch movie, using original',data:{error:err.message,status:err.response?.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+          // If fetching fails, use the original movie object
+          // The backend will handle creating it from tmdbId
           movieData = movie;
         }
       }
 
       const playlistId = searchParams.get('addToPlaylist');
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:384',message:'Preparing to add movie',data:{playlistId,moviePayload:{_id:movieData._id,tmdbId:movieData.tmdbId||movieData.id,id:movieData.id}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       
       // Store movie in localStorage for new playlists (when addToPlaylist is 'true')
       if (playlistId === 'true') {
@@ -388,7 +419,7 @@ const Films = () => {
           // Check if movie already exists
           const exists = selectedMovies.some(
             m => (m._id && movieData._id && m._id === movieData._id) ||
-                 (m.tmdbId && movieData.tmdbId && m.tmdbId === movieData.tmdbId) ||
+                 (m.tmdbId && (movieData.tmdbId || movieData.id) && m.tmdbId === (movieData.tmdbId || movieData.id)) ||
                  (m.id && movieData.id && m.id === movieData.id)
           );
           
@@ -416,14 +447,31 @@ const Films = () => {
         }
       } else if (playlistId && playlistId !== 'true') {
         // Add to existing playlist
-        await playlistsAPI.addMovies(playlistId, [{
-          _id: movieData._id,
-          tmdbId: movieData.tmdbId || movieData.id,
-          id: movieData.id
-        }]);
+        // Ensure we have at least tmdbId or id for the backend to work with
+        const moviePayload = {
+          _id: movieData._id || undefined,
+          tmdbId: movieData.tmdbId || movieData.id || undefined,
+          id: movieData.id || undefined
+        };
+        
+        // Remove undefined values
+        Object.keys(moviePayload).forEach(key => 
+          moviePayload[key] === undefined && delete moviePayload[key]
+        );
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:435',message:'Calling playlistsAPI.addMovies',data:{playlistId,moviePayload},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        await playlistsAPI.addMovies(playlistId, [moviePayload]);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:436',message:'Movie added successfully',data:{playlistId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         alert('Movie added to playlist!');
       }
     } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Films.jsx:439',message:'Error adding movie to playlist',data:{status:err.response?.status,error:err.response?.data?.error,message:err.message,playlistId:searchParams.get('addToPlaylist')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       const errorMsg = err.response?.data?.error || 'Failed to add movie to playlist';
       alert(errorMsg);
     } finally {

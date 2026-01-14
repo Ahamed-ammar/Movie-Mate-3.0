@@ -87,7 +87,13 @@ const PlaylistDetails = () => {
   if (error) return <ErrorMessage message={error} onRetry={loadPlaylist} />;
   if (!playlist) return <div className="text-white text-center py-20">Playlist not found</div>;
 
-  const isOwnPlaylist = isAuthenticated && user && (user.id === playlist.userId?._id || user._id === playlist.userId?._id);
+  // Check ownership - handle both populated userId object and string ID
+  const playlistUserId = playlist.userId?._id || playlist.userId;
+  const currentUserId = user?.id || user?._id;
+  const isOwnPlaylist = isAuthenticated && user && playlistUserId && currentUserId && 
+    (playlistUserId.toString() === currentUserId.toString() || 
+     playlistUserId.toString() === user.id?.toString() || 
+     playlistUserId.toString() === user._id?.toString());
   const movies = playlist.movies || [];
   const movieList = movies.map(entry => entry.movieId || entry).filter(Boolean);
 
@@ -117,12 +123,12 @@ const PlaylistDetails = () => {
             
             {/* Action Buttons (only for own playlists) */}
             {isOwnPlaylist && (
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <button
                   onClick={() => setShowEditForm(!showEditForm)}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
                 >
-                  {showEditForm ? 'Cancel Edit' : 'Edit Playlist'}
+                  {showEditForm ? 'Cancel Edit' : 'Update Playlist'}
                 </button>
                 <button
                   onClick={handleDelete}

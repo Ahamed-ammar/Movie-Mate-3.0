@@ -42,9 +42,19 @@ const Profile = () => {
 
   useEffect(() => {
     if (user) {
-      loadTabData();
+      // For network tab, wait for connection status if viewing another user's profile
+      if (activeTab === 'network' && !isOwnProfile && currentUser) {
+        // Wait a bit for connectionStatus to load, then load network data
+        const timer = setTimeout(() => {
+          loadTabData();
+        }, 100);
+        return () => clearTimeout(timer);
+      } else {
+        loadTabData();
+      }
     }
-  }, [user, activeTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, activeTab, connectionStatus]);
 
   // Refresh watchlist when returning from add mode
   useEffect(() => {
@@ -159,13 +169,31 @@ const Profile = () => {
               connectionsRes = await connectionsAPI.getConnections();
             } else {
               // Load connections for the profile user (only if connected)
-              connectionsRes = await connectionsAPI.getUserConnections(user.id);
+              // Check if user is authenticated first
+              if (!currentUser || !isAuthenticated) {
+                setData(prev => ({ ...prev, network: { connections: [] } }));
+                break;
+              }
+              try {
+                connectionsRes = await connectionsAPI.getUserConnections(user.id);
+                console.log('Network connections loaded:', connectionsRes.data.data.connections);
+              } catch (apiErr) {
+                // If 403, user is not connected - this is expected
+                if (apiErr.response?.status === 403) {
+                  console.log('Not connected to this user, cannot view their connections');
+                } else {
+                  console.error('Error loading user connections:', apiErr);
+                }
+                setData(prev => ({ ...prev, network: { connections: [] } }));
+                break;
+              }
             }
             setData(prev => ({ 
               ...prev, 
               network: { connections: connectionsRes.data.data.connections || [] } 
             }));
           } catch (err) {
+            console.error('Error loading network connections:', err);
             // If error is 403, user is not connected - handled in renderTabContent
             setData(prev => ({ ...prev, network: { connections: [] } }));
           }
@@ -443,14 +471,43 @@ const Profile = () => {
         );
       case 'network':
         // Show connections if own profile OR if connected
-        const isConnected = connectionStatus?.status === 'accepted';
-        if (!isOwnProfile && !isConnected) {
-          return (
-            <div className="text-center py-20">
-              <p className="text-gray-400 text-lg">Connect to view this user's network</p>
-            </div>
-          );
+        // Check connection status - it can be 'accepted', 'request_sent', or 'request_received'
+        // But for viewing connections, we need 'accepted'
+        const connectionStatusValue = connectionStatus?.status;
+        const isConnected = connectionStatusValue === 'accepted' || 
+                          (connectionStatus?.connection?.status === 'accepted');
+        
+        // If viewing another user's profile
+        if (!isOwnProfile) {
+          // Check if user is authenticated
+          if (!isAuthenticated || !currentUser) {
+            return (
+              <div className="text-center py-20">
+                <p className="text-gray-400 text-lg">Please login to view this user's network</p>
+              </div>
+            );
+          }
+          
+          // If connection status is still loading, show loading state
+          if (loadingConnectionStatus) {
+            return (
+              <div className="text-center py-20">
+                <p className="text-gray-400 text-lg">Loading...</p>
+              </div>
+            );
+          }
+          
+          // If not connected, show message
+          if (!isConnected) {
+            return (
+              <div className="text-center py-20">
+                <p className="text-gray-400 text-lg">Connect to view this user's network</p>
+              </div>
+            );
+          }
         }
+        
+        // If own profile or connected, show connections (even if empty array)
         return (
           <div>
             <h3 className="text-xl font-semibold mb-4 text-white">Connections</h3>
@@ -460,42 +517,56 @@ const Profile = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data.network.connections.map((conn) => (
-                  <div
-                    key={conn.id}
-                    className="bg-gray-800 rounded-lg p-4 flex items-center justify-between"
-                  >
-                    <Link
-                      to={`/profile/${conn.user.username}`}
-                      className="flex items-center space-x-3 flex-1"
+                {data.network.connections.map((conn) => {
+                  // Check if this connection is the current logged-in user
+                  const connectionUserId = conn.user?.id || conn.user?._id;
+                  const isCurrentUser = currentUser && (
+                    connectionUserId === currentUser.id || 
+                    connectionUserId === currentUser._id ||
+                    conn.user?.username === currentUser.username
+                  );
+                  const displayName = isCurrentUser ? 'You' : conn.user.username;
+                  const displayLink = isCurrentUser ? `/profile/${currentUser.username}` : `/profile/${conn.user.username}`;
+                  
+                  return (
+                    <div
+                      key={conn.id}
+                      className="bg-gray-800 rounded-lg p-4 flex items-center justify-between"
                     >
-                      <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-white">
-                        {conn.user.profilePicture ? (
-                          <img
-                            src={conn.user.profilePicture}
-                            alt={conn.user.username}
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        ) : (
-                          <span>{conn.user.username.charAt(0).toUpperCase()}</span>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">{conn.user.username}</p>
-                        <p className="text-gray-400 text-sm">
-                          Connected {new Date(conn.connectedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </Link>
-                    <button
-                      onClick={() => handleRemoveConnection(conn.id)}
-                      className="ml-4 px-3 py-1 text-sm text-red-400 hover:text-red-300 transition"
-                      title="Remove connection"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                      <Link
+                        to={displayLink}
+                        className="flex items-center space-x-3 flex-1"
+                      >
+                        <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-white">
+                          {conn.user.profilePicture ? (
+                            <img
+                              src={conn.user.profilePicture}
+                              alt={displayName}
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            <span>{displayName.charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">{displayName}</p>
+                          <p className="text-gray-400 text-sm">
+                            Connected {new Date(conn.connectedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </Link>
+                      {isOwnProfile && !isCurrentUser && (
+                        <button
+                          onClick={() => handleRemoveConnection(conn.id)}
+                          className="ml-4 px-3 py-1 text-sm text-red-400 hover:text-red-300 transition"
+                          title="Remove connection"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

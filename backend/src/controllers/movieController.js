@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import fs from 'fs';
 import Movie from '../models/Movie.js';
 import {
   searchMovies,
@@ -14,6 +15,8 @@ import {
   transformMovieData
 } from '../services/tmdbService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+
+const logPath = 'f:\\Main Projects\\Movie-Mate\\.cursor\\debug.log';
 
 // @desc    Search movies
 // @route   GET /api/movies/search
@@ -231,20 +234,39 @@ export const getTrending = asyncHandler(async (req, res) => {
 // @route   GET /api/movies/popular
 // @access  Public
 export const getPopular = asyncHandler(async (req, res) => {
+  // #region agent log
+  try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:233',message:'getPopular called',data:{page:req.query.page},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'}) + '\n'); } catch(e) {}
+  // #endregion
   const { page = 1 } = req.query;
   
-  const results = await getPopularMovies(page);
+  try {
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:236',message:'Calling getPopularMovies',data:{page},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'}) + '\n'); } catch(e) {}
+    // #endregion
+    const results = await getPopularMovies(page);
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:238',message:'getPopularMovies successful',data:{resultCount:results?.results?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'}) + '\n'); } catch(e) {}
+    // #endregion
 
-  const movies = results.results.map(movie => transformMovieData(movie));
+    const movies = results.results.map(movie => transformMovieData(movie));
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:240',message:'Sending response',data:{movieCount:movies.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'}) + '\n'); } catch(e) {}
+    // #endregion
 
-  res.json({
-    success: true,
-    data: {
-      movies,
-      page: results.page,
-      totalPages: results.total_pages
-    }
-  });
+    res.json({
+      success: true,
+      data: {
+        movies,
+        page: results.page,
+        totalPages: results.total_pages
+      }
+    });
+  } catch (error) {
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:248',message:'Error in getPopular',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'}) + '\n'); } catch(e) {}
+    // #endregion
+    throw error;
+  }
 });
 
 // @desc    Get movies by genre
@@ -293,14 +315,30 @@ export const getByYear = asyncHandler(async (req, res) => {
 // @route   GET /api/movies/genres
 // @access  Public
 export const getGenresList = asyncHandler(async (req, res) => {
-  const results = await getGenres();
+  // #region agent log
+  try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:295',message:'getGenresList called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'}) + '\n'); } catch(e) {}
+  // #endregion
+  try {
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:296',message:'Calling getGenres',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'}) + '\n'); } catch(e) {}
+    // #endregion
+    const results = await getGenres();
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:298',message:'getGenres successful',data:{genreCount:results?.genres?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'}) + '\n'); } catch(e) {}
+    // #endregion
 
-  res.json({
-    success: true,
-    data: {
-      genres: results.genres
-    }
-  });
+    res.json({
+      success: true,
+      data: {
+        genres: results.genres
+      }
+    });
+  } catch (error) {
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'movieController.js:304',message:'Error in getGenresList',data:{error:error.message,stack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,D'}) + '\n'); } catch(e) {}
+    // #endregion
+    throw error;
+  }
 });
 
 // @desc    Get watch providers list

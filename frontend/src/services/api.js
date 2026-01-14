@@ -16,6 +16,9 @@ console.log('API Base URL:', API_URL || 'Not configured - check VITE_API_URL in 
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:19',message:'API request interceptor',data:{url:config.url,method:config.method,hasToken:!!localStorage.getItem('accessToken')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -31,12 +34,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:33',message:'API response error',data:{status:error.response?.status,url:error.config?.url,method:error.config?.method,error:error.message,is401:error.response?.status===401,hasRetry:error.config?._retry},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,E'})}).catch(()=>{});
+    // #endregion
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:40',message:'Attempting token refresh',data:{url:originalRequest.url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         // Try to refresh token
         const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
           withCredentials: true
@@ -46,8 +55,14 @@ api.interceptors.response.use(
         localStorage.setItem('accessToken', accessToken);
 
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:49',message:'Token refresh successful, retrying request',data:{url:originalRequest.url},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         return api(originalRequest);
       } catch (refreshError) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/60e60c1d-154b-42f5-86fd-e42bebca266f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.js:52',message:'Token refresh failed',data:{error:refreshError.message,status:refreshError.response?.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         // Refresh failed, logout user
         localStorage.removeItem('accessToken');
         window.location.href = '/login';

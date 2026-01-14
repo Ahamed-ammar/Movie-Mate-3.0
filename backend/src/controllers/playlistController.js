@@ -1,3 +1,4 @@
+import fs from 'fs';
 import PlayList from '../models/PlayList.js';
 import Movie from '../models/Movie.js';
 import {
@@ -5,6 +6,8 @@ import {
   transformMovieData
 } from '../services/tmdbService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+
+const logPath = 'f:\\Main Projects\\Movie-Mate\\.cursor\\debug.log';
 
 // @desc    Get all playlists for a user
 // @route   GET /api/playlists
@@ -79,7 +82,9 @@ export const getPlaylist = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user.userId;
 
-  const playlist = await PlayList.findById(id).populate('movies.movieId');
+  const playlist = await PlayList.findById(id)
+    .populate('movies.movieId')
+    .populate('userId', 'username profilePicture');
 
   if (!playlist) {
     return res.status(404).json({
@@ -120,19 +125,50 @@ export const createPlaylist = asyncHandler(async (req, res) => {
   const movies = [];
   if (movieIds && movieIds.length > 0) {
     for (const movieIdData of movieIds) {
-      const tmdbId = movieIdData.tmdbId || movieIdData.id || movieIdData;
-      const movieId = movieIdData._id || movieIdData.movieId;
+      // Handle both object and primitive values
+      let tmdbId, movieId;
+      
+      if (typeof movieIdData === 'object' && movieIdData !== null) {
+        tmdbId = movieIdData.tmdbId || movieIdData.id;
+        movieId = movieIdData._id || movieIdData.movieId;
+      } else {
+        // If it's a primitive, treat it as tmdbId
+        tmdbId = movieIdData;
+        movieId = null;
+      }
 
       let movie = movieId ? await Movie.findById(movieId) : null;
 
       // If not in cache, try to fetch from TMDB
       if (!movie && tmdbId) {
         try {
-          const tmdbMovie = await getTMDBMovieDetails(tmdbId);
-          const movieData = transformMovieData(tmdbMovie);
-          movie = await Movie.create(movieData);
+          // Convert to number if it's a string
+          const tmdbIdNum = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+          if (isNaN(tmdbIdNum)) {
+            console.error(`Invalid TMDB ID: ${tmdbId}`);
+            continue;
+          }
+          
+          // Check if movie already exists in database by tmdbId
+          movie = await Movie.findOne({ tmdbId: tmdbIdNum });
+          
+          if (!movie) {
+            // Movie doesn't exist, fetch from TMDB and create it
+            const tmdbMovie = await getTMDBMovieDetails(tmdbIdNum);
+            const movieData = transformMovieData(tmdbMovie);
+            movie = await Movie.create(movieData);
+          }
         } catch (error) {
           console.error(`Error fetching movie ${tmdbId}:`, error);
+          // If it's a duplicate key error, try to find the existing movie
+          if (error.code === 11000 || error.name === 'MongoServerError') {
+            try {
+              const tmdbIdNum = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+              movie = await Movie.findOne({ tmdbId: tmdbIdNum });
+            } catch (findError) {
+              // Ignore find error
+            }
+          }
           // Skip this movie if it fails
           continue;
         }
@@ -202,22 +238,70 @@ export const updatePlaylist = asyncHandler(async (req, res) => {
   // Update movies if provided
   if (movieIds !== undefined) {
     const movies = [];
+    const errors = [];
+    
     for (const movieIdData of movieIds) {
-      const tmdbId = movieIdData.tmdbId || movieIdData.id || movieIdData;
-      const movieId = movieIdData._id || movieIdData.movieId;
+      // Handle both object and primitive values
+      let tmdbId, movieId;
+      
+      if (typeof movieIdData === 'object' && movieIdData !== null) {
+        tmdbId = movieIdData.tmdbId || movieIdData.id;
+        movieId = movieIdData._id || movieIdData.movieId;
+      } else {
+        // If it's a primitive, treat it as tmdbId
+        tmdbId = movieIdData;
+        movieId = null;
+      }
 
       let movie = movieId ? await Movie.findById(movieId) : null;
 
       // If not in cache, try to fetch from TMDB
       if (!movie && tmdbId) {
         try {
-          const tmdbMovie = await getTMDBMovieDetails(tmdbId);
-          const movieData = transformMovieData(tmdbMovie);
-          movie = await Movie.create(movieData);
+          // Convert to number if it's a string
+          const tmdbIdNum = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+          if (isNaN(tmdbIdNum)) {
+            errors.push(`Invalid TMDB ID: ${tmdbId}`);
+            continue;
+          }
+          
+          // Check if movie already exists in database by tmdbId
+          movie = await Movie.findOne({ tmdbId: tmdbIdNum });
+          
+          if (!movie) {
+            // Movie doesn't exist, fetch from TMDB and create it
+            const tmdbMovie = await getTMDBMovieDetails(tmdbIdNum);
+            const movieData = transformMovieData(tmdbMovie);
+            movie = await Movie.create(movieData);
+          }
         } catch (error) {
           console.error(`Error fetching movie ${tmdbId}:`, error);
-          continue;
+          // If it's a duplicate key error, try to find the existing movie
+          if (error.code === 11000 || error.name === 'MongoServerError') {
+            try {
+              const tmdbIdNum = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+              movie = await Movie.findOne({ tmdbId: tmdbIdNum });
+              if (movie) {
+                // Found the existing movie, proceed to add it
+                // Don't continue, let it fall through to add the movie
+              } else {
+                errors.push(`Failed to fetch movie with ID ${tmdbId}: ${error.message}`);
+                continue;
+              }
+            } catch (findError) {
+              errors.push(`Failed to fetch movie with ID ${tmdbId}: ${error.message}`);
+              continue;
+            }
+          } else {
+            errors.push(`Failed to fetch movie with ID ${tmdbId}: ${error.message}`);
+            continue;
+          }
         }
+      }
+
+      if (!movie) {
+        errors.push(`Movie not found: ${movieId || tmdbId || 'unknown'}`);
+        continue;
       }
 
       if (movie) {
@@ -231,7 +315,19 @@ export const updatePlaylist = asyncHandler(async (req, res) => {
         }
       }
     }
+    
     playlist.movies = movies;
+    
+    // If there were errors but we still have some movies, log the errors
+    if (errors.length > 0 && movies.length > 0) {
+      console.warn('Some movies failed to add:', errors);
+    } else if (errors.length > 0 && movies.length === 0 && movieIds.length > 0) {
+      // If all movies failed and we had movies to add, return an error
+      return res.status(400).json({
+        success: false,
+        error: `Failed to add movies: ${errors.join('; ')}`
+      });
+    }
   }
 
   await playlist.save();
@@ -279,11 +375,17 @@ export const deletePlaylist = asyncHandler(async (req, res) => {
 // @route   POST /api/playlists/:id/movies
 // @access  Private
 export const addMoviesToPlaylist = asyncHandler(async (req, res) => {
+  // #region agent log
+  try { fs.appendFileSync(logPath, JSON.stringify({location:'playlistController.js:374',message:'addMoviesToPlaylist called',data:{playlistId:req.params.id,movieIdsCount:req.body?.movieIds?.length,userId:req.user?.userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'}) + '\n'); } catch(e) {}
+  // #endregion
   const { id } = req.params;
   const { movieIds } = req.body;
   const userId = req.user.userId;
 
   const playlist = await PlayList.findById(id);
+  // #region agent log
+  try { fs.appendFileSync(logPath, JSON.stringify({location:'playlistController.js:380',message:'Playlist found',data:{hasPlaylist:!!playlist,playlistUserId:playlist?.userId?.toString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'}) + '\n'); } catch(e) {}
+  // #endregion
 
   if (!playlist) {
     return res.status(404).json({
@@ -308,22 +410,72 @@ export const addMoviesToPlaylist = asyncHandler(async (req, res) => {
   }
 
   // Process movie IDs
+  const errors = [];
+  let addedCount = 0;
+  
   for (const movieIdData of movieIds) {
-    const tmdbId = movieIdData.tmdbId || movieIdData.id || movieIdData;
-    const movieId = movieIdData._id || movieIdData.movieId;
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'playlistController.js:368',message:'Processing movie',data:{movieIdData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'}) + '\n'); } catch(e) {}
+    // #endregion
+    // Handle both object and primitive values
+    let tmdbId, movieId;
+    
+    if (typeof movieIdData === 'object' && movieIdData !== null) {
+      tmdbId = movieIdData.tmdbId || movieIdData.id;
+      movieId = movieIdData._id || movieIdData.movieId;
+    } else {
+      // If it's a primitive, treat it as tmdbId
+      tmdbId = movieIdData;
+      movieId = null;
+    }
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'playlistController.js:381',message:'Extracted IDs',data:{tmdbId,movieId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'}) + '\n'); } catch(e) {}
+    // #endregion
 
     let movie = movieId ? await Movie.findById(movieId) : null;
 
     // If not in cache, try to fetch from TMDB
     if (!movie && tmdbId) {
       try {
-        const tmdbMovie = await getTMDBMovieDetails(tmdbId);
-        const movieData = transformMovieData(tmdbMovie);
-        movie = await Movie.create(movieData);
+        // Convert to number if it's a string
+        const tmdbIdNum = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+        if (isNaN(tmdbIdNum)) {
+          errors.push(`Invalid TMDB ID: ${tmdbId}`);
+          continue;
+        }
+        
+        // Check if movie already exists in database by tmdbId
+        movie = await Movie.findOne({ tmdbId: tmdbIdNum });
+        
+        if (!movie) {
+          // Movie doesn't exist, fetch from TMDB and create it
+          const tmdbMovie = await getTMDBMovieDetails(tmdbIdNum);
+          const movieData = transformMovieData(tmdbMovie);
+          movie = await Movie.create(movieData);
+        }
       } catch (error) {
         console.error(`Error fetching movie ${tmdbId}:`, error);
+        // If it's a duplicate key error, try to find the existing movie
+        if (error.code === 11000 || error.name === 'MongoServerError') {
+          try {
+            const tmdbIdNum = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+            movie = await Movie.findOne({ tmdbId: tmdbIdNum });
+            if (movie) {
+              // Found the existing movie, continue
+              continue;
+            }
+          } catch (findError) {
+            // Ignore find error
+          }
+        }
+        errors.push(`Failed to fetch movie with ID ${tmdbId}: ${error.message}`);
         continue;
       }
+    }
+
+    if (!movie) {
+      errors.push(`Movie not found: ${movieId || tmdbId || 'unknown'}`);
+      continue;
     }
 
     if (movie) {
@@ -336,9 +488,36 @@ export const addMoviesToPlaylist = asyncHandler(async (req, res) => {
           movieId: movie._id,
           addedAt: new Date()
         });
+        addedCount++;
       }
     }
   }
+  
+  // #region agent log
+  try { fs.appendFileSync(logPath, JSON.stringify({location:'playlistController.js:430',message:'Processing complete',data:{addedCount,errorCount:errors.length,movieIdsLength:movieIds.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'}) + '\n'); } catch(e) {}
+  // #endregion
+  
+  // If no movies were added and we had movies to add, return an error
+  if (addedCount === 0 && movieIds.length > 0) {
+    // #region agent log
+    try { fs.appendFileSync(logPath, JSON.stringify({location:'playlistController.js:433',message:'No movies added, returning error',data:{errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'}) + '\n'); } catch(e) {}
+    // #endregion
+    return res.status(400).json({
+      success: false,
+      error: errors.length > 0 
+        ? `Failed to add movies: ${errors.join('; ')}`
+        : 'Failed to add movies to playlist'
+    });
+  }
+  
+  // If some movies failed but some succeeded, log warnings but still succeed
+  if (errors.length > 0 && addedCount > 0) {
+    console.warn('Some movies failed to add:', errors);
+  }
+  
+  // #region agent log
+  try { fs.appendFileSync(logPath, JSON.stringify({location:'playlistController.js:445',message:'Saving playlist',data:{movieCount:playlist.movies.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'}) + '\n'); } catch(e) {}
+  // #endregion
 
   await playlist.save();
   await playlist.populate('movies.movieId');
