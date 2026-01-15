@@ -1,17 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { moviesAPI } from '../services/api';
+import { moviesAPI, journalsAPI, reviewsAPI } from '../services/api';
 import { TMDB_IMAGE_BASE_URL } from '../utils/constants';
+import { useAuth } from '../contexts/AuthContext';
 import Loading from '../components/common/Loading';
+import PopularReviewsSection from '../components/reviews/PopularReviewsSection';
 
 const Landing = () => {
+  const { isAuthenticated } = useAuth();
   const [popularMovies, setPopularMovies] = useState([]);
+  const [journals, setJournals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     loadPopularMovies();
-  }, []);
+    if (isAuthenticated) {
+      loadJournals();
+    }
+  }, [isAuthenticated]);
 
   const loadPopularMovies = async () => {
     setLoading(true);
@@ -24,6 +31,15 @@ const Landing = () => {
       setError('Failed to load movies. Please try again later.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadJournals = async () => {
+    try {
+      const response = await journalsAPI.getAll(1, 6);
+      setJournals(response.data.data.journals || []);
+    } catch (err) {
+      console.error('Error loading journals:', err);
     }
   };
 
@@ -55,38 +71,43 @@ const Landing = () => {
         </div>
       </div>
 
-      {/* Hero Section */}
-      <section className="relative container mx-auto px-6 pt-20 pb-16">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-            Discover the Movie Streaming Experience with <span className="text-yellow-400">Movie-Mate</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Our young and expert admins prepare amazing and trending movies for you to watch online and priceless.
-          </p>
-          
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link
-              to="/register"
-              className="px-8 py-4 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-all transform hover:scale-105 shadow-lg shadow-yellow-400/20"
-            >
-              Get started
-            </Link>
-            <Link
-              to="/browse"
-              className="px-8 py-4 bg-transparent border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-black transition-all transform hover:scale-105"
-            >
-              Explore Movies
-            </Link>
+      {/* Hero Section - Only show when NOT authenticated */}
+      {!isAuthenticated && (
+        <section className="relative container mx-auto px-4 sm:px-6 pt-12 sm:pt-16 md:pt-20 pb-12 sm:pb-16">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 sm:mb-6 leading-tight px-2">
+              Where <span className="text-yellow-400">Movie Lovers</span> Connect
+            </h1>
+            <p className="text-lg sm:text-xl md:text-2xl font-semibold text-yellow-400 mb-4 sm:mb-6 px-4">
+              Rate movies, share reviews, build lists, and join the conversation.
+            </p>
+            <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed px-4">
+              Discover what friends are watching, swap recommendations, and grow your film circle in one social space.
+            </p>
+            
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
+              <Link
+                to="/register"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-all transform hover:scale-105 shadow-lg shadow-yellow-400/20 text-center"
+              >
+                Join the Community
+              </Link>
+              <Link
+                to="/browse"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 bg-transparent border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-black transition-all transform hover:scale-105 text-center"
+              >
+                Discover Movies
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Popular Movies Section */}
-      <section className="relative container mx-auto px-6 py-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 px-2">
-          Popular Movies
+      <section className="relative container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-6 sm:mb-8 px-2">
+          Trending in the Community
         </h2>
         
         {loading ? (
@@ -104,13 +125,13 @@ const Landing = () => {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto pb-6 -mx-6 px-6">
-            <div className="flex gap-6 min-w-max">
+          <div className="overflow-x-auto pb-6 -mx-4 sm:-mx-6 px-4 sm:px-6">
+            <div className="flex gap-4 sm:gap-6 min-w-max">
               {popularMovies.map((movie) => (
                 <Link
                   key={movieId(movie)}
                   to={`/movie/${movieId(movie)}`}
-                  className="group relative flex-shrink-0 w-64 md:w-80 transition-transform hover:scale-105"
+                  className="group relative flex-shrink-0 w-56 sm:w-64 md:w-72 lg:w-80 transition-transform hover:scale-105"
                 >
                   <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                     {/* Movie Thumbnail */}
@@ -128,13 +149,13 @@ const Landing = () => {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                       
                       {/* Movie Info Overlay */}
-                      <div className="absolute bottom-0 left-0 right-0 p-6">
-                        <h3 className="text-white font-bold text-lg mb-2 line-clamp-2 group-hover:text-yellow-400 transition">
+                      <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6">
+                        <h3 className="text-white font-bold text-sm sm:text-base md:text-lg mb-1 sm:mb-2 line-clamp-2 group-hover:text-yellow-400 transition">
                           {movie.title}
                         </h3>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between text-xs sm:text-sm">
                           {movie.releaseDate && (
-                            <span className="text-gray-300 text-sm">
+                            <span className="text-gray-300">
                               {new Date(movie.releaseDate).getFullYear()}
                             </span>
                           )}
@@ -165,7 +186,60 @@ const Landing = () => {
         <p className="text-gray-500 text-sm">← Scroll to see more movies →</p>
       </div>
 
-      {/* Features Section */}
+      {/* Recent Journals Section - Only when authenticated */}
+      {isAuthenticated && journals.length > 0 && (
+        <section className="relative container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white px-2">
+              Recent Journals
+            </h2>
+            <Link to="/journal" className="text-yellow-400 hover:text-yellow-300 transition text-sm sm:text-base font-semibold">
+              View All →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {journals.map((journal) => (
+              <Link
+                key={journal._id}
+                to={`/journal/${journal._id}`}
+                className="bg-gray-800 rounded-xl p-4 sm:p-6 hover:bg-gray-750 transition-all duration-200 border border-gray-700 hover:border-gray-600"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+                    {journal.userId?.profilePicture ? (
+                      <img src={journal.userId.profilePicture} alt={journal.userId.username} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      <span className="text-gray-300 font-semibold">
+                        {(journal.userId?.username || '?').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-sm truncate">{journal.userId?.username || 'Unknown'}</p>
+                    <p className="text-gray-400 text-xs">
+                      {journal.createdAt ? new Date(journal.createdAt).toLocaleDateString() : ''}
+                    </p>
+                  </div>
+                </div>
+                <h3 className="text-white font-bold text-lg mb-2 line-clamp-2">{journal.title}</h3>
+                <p className="text-gray-400 text-sm line-clamp-3">
+                  {journal.contentHtml?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Popular Reviews Section - Only when authenticated */}
+      {isAuthenticated && (
+        <section className="relative container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+          <PopularReviewsSection />
+        </section>
+      )}
+
+      {/* Features Section - Only when NOT authenticated */}
+      {!isAuthenticated && (
       <section className="relative container mx-auto px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {/* Feature 1: Track Films */}
@@ -254,6 +328,7 @@ const Landing = () => {
           </div>
         </div>
       </section>
+      )}
     </div>
   );
 };

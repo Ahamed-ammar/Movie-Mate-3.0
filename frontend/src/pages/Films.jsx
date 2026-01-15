@@ -598,18 +598,18 @@ const Films = () => {
 
   return (
     <div className="min-h-screen bg-[#0f0f0f]">
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Browse Filters Section */}
-        <div className="mb-8">
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <span className="text-gray-400 font-medium uppercase text-sm mr-1">BROWSE BY:</span>
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4">
+            <span className="text-gray-400 font-medium uppercase text-xs sm:text-sm mr-1">BROWSE BY:</span>
             
             {/* Year Dropdown */}
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <select
                 value={selectedYear}
                 onChange={handleYearChange}
-                className={`px-4 py-2 pr-8 bg-[#1a1a1a] border border-gray-700 rounded text-gray-400 text-sm uppercase focus:outline-none focus:border-gray-600 appearance-none cursor-pointer transition hover:bg-[#222] ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 pr-7 sm:pr-8 bg-[#1a1a1a] border border-gray-700 rounded text-gray-400 text-xs sm:text-sm uppercase focus:outline-none focus:border-gray-600 appearance-none cursor-pointer transition hover:bg-[#222] ${
                   selectedYear ? 'text-white' : ''
                 }`}
               >
@@ -626,11 +626,11 @@ const Films = () => {
             </div>
 
             {/* Rating Dropdown */}
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <select
                 value={selectedRating}
                 onChange={handleRatingChange}
-                className={`px-4 py-2 pr-8 bg-[#1a1a1a] border border-gray-700 rounded text-gray-400 text-sm uppercase focus:outline-none focus:border-gray-600 appearance-none cursor-pointer transition hover:bg-[#222] ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 pr-7 sm:pr-8 bg-[#1a1a1a] border border-gray-700 rounded text-gray-400 text-xs sm:text-sm uppercase focus:outline-none focus:border-gray-600 appearance-none cursor-pointer transition hover:bg-[#222] ${
                   selectedRating ? 'text-white' : ''
                 }`}
               >
@@ -649,11 +649,11 @@ const Films = () => {
             </div>
 
             {/* Genre Dropdown */}
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <select
                 value={selectedGenre}
                 onChange={handleGenreChange}
-                className={`px-4 py-2 pr-8 bg-[#1a1a1a] border border-gray-700 rounded text-gray-400 text-sm uppercase focus:outline-none focus:border-gray-600 appearance-none cursor-pointer transition hover:bg-[#222] ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 pr-7 sm:pr-8 bg-[#1a1a1a] border border-gray-700 rounded text-gray-400 text-xs sm:text-sm uppercase focus:outline-none focus:border-gray-600 appearance-none cursor-pointer transition hover:bg-[#222] ${
                   selectedGenre ? 'text-white' : ''
                 }`}
               >
@@ -673,22 +673,22 @@ const Films = () => {
             {(selectedYear || selectedGenre || selectedRating) && (
               <button
                 onClick={handleClearAllFilters}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm uppercase transition font-medium"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 hover:bg-red-700 text-white rounded text-xs sm:text-sm uppercase transition font-medium"
               >
-                Clear All Filters
+                Clear All
               </button>
             )}
           </div>
 
           {/* Search Input */}
-          <form onSubmit={handleSearch} className="flex items-center gap-4">
+          <form onSubmit={handleSearch} className="flex items-center gap-2 sm:gap-4">
             <div className="flex-1 relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="FIND A FILM"
-                className="w-full px-4 py-2 bg-[#1a1a1a] border border-gray-700 text-white rounded-lg focus:outline-none focus:border-gray-600 placeholder-gray-500"
+                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-[#1a1a1a] border border-gray-700 text-white text-sm sm:text-base rounded-lg focus:outline-none focus:border-gray-600 placeholder-gray-500"
               />
               {searchQuery && (
                 <button
@@ -709,7 +709,7 @@ const Films = () => {
             </div>
             <button
               type="submit"
-              className="px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition"
+              className="px-4 sm:px-6 py-2 sm:py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm sm:text-base rounded-lg transition font-medium"
             >
               Search
             </button>
@@ -717,9 +717,9 @@ const Films = () => {
         </div>
 
         {/* Popular Films Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
               {addToWatchlistMode 
                 ? 'ADD MOVIES TO WATCHLIST'
                 : addToPlaylistMode

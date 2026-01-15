@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { journalsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,13 +15,14 @@ const resolveUploadUrl = (url) => {
   return url;
 };
 
-const Journal = () => {
+const ManageJournal = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
 
   const [journals, setJournals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -29,11 +30,11 @@ const Journal = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await journalsAPI.getAll(page, 20);
+      const res = await journalsAPI.getMy(page, 20);
       setJournals(res.data.data.journals || []);
       setTotalPages(res.data.data.totalPages || 1);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load journals');
+      setError(err.response?.data?.error || 'Failed to load your journals');
     } finally {
       setLoading(false);
     }
@@ -44,112 +45,102 @@ const Journal = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  const isEmpty = useMemo(() => !loading && journals.length === 0, [loading, journals.length]);
+  const handleDelete = async (journalId) => {
+    if (!window.confirm('Are you sure you want to delete this journal? This action cannot be undone.')) {
+      return;
+    }
 
-  if (loading) return <Loading message="Loading journals..." />;
+    setDeleteLoading(journalId);
+    try {
+      await journalsAPI.delete(journalId);
+      setJournals((prev) => prev.filter((j) => j._id !== journalId));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete journal');
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  if (loading) return <Loading message="Loading your journals..." />;
   if (error) return <ErrorMessage message={error} onRetry={loadJournals} />;
+
+  const isEmpty = journals.length === 0;
 
   return (
     <div className="min-h-screen bg-[#0f0f0f]">
       <div className="container mx-auto px-4 py-6 sm:py-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Journal</h1>
-            <p className="text-sm sm:text-base text-gray-400">Read journals from all members.</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Manage My Journals</h1>
+            <p className="text-sm sm:text-base text-gray-400">View, edit, and delete your journals.</p>
           </div>
-          {isAuthenticated && (
-            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-              <button
-                onClick={() => navigate('/journal/manage')}
-                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gray-700 text-white text-sm sm:text-base rounded-lg hover:bg-gray-600 transition font-medium"
-              >
-                Manage
-              </button>
-              <button
-                onClick={() => navigate('/journal/write')}
-                className="flex-1 sm:flex-none px-3 sm:px-5 py-2 sm:py-2.5 bg-primary-600 text-white text-sm sm:text-base rounded-lg hover:bg-primary-700 transition font-medium"
-              >
-                Write
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => navigate('/journal')}
+            className="w-full sm:w-auto px-4 py-2 bg-gray-700 text-white text-sm sm:text-base rounded-lg hover:bg-gray-600 transition font-medium"
+          >
+            Back to All Journals
+          </button>
         </div>
 
         {isEmpty ? (
           <div className="text-center py-20">
-            <p className="text-gray-400 text-lg mb-4">No journals yet.</p>
-            {isAuthenticated && (
-              <button
-                onClick={() => navigate('/journal/write')}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-              >
-                Be the first to write one
-              </button>
-            )}
+            <p className="text-gray-400 text-lg mb-4">You haven't written any journals yet.</p>
+            <button
+              onClick={() => navigate('/journal/write')}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+            >
+              Write your first journal
+            </button>
           </div>
         ) : (
           <div className="max-w-2xl mx-auto space-y-6">
             {journals.map((j) => {
-              const author = j.userId;
               const previewText = stripHtml(j.contentHtml);
-              const previewLimit = 260;
-              const isLong = previewText.length > previewLimit;
-              const preview = previewText.slice(0, previewLimit);
+              const preview = previewText.slice(0, 220);
               const firstImgRaw = Array.isArray(j.imageUrls) && j.imageUrls.length > 0 ? j.imageUrls[0] : null;
               const firstImg = firstImgRaw ? resolveUploadUrl(firstImgRaw) : null;
               const created = j.createdAt ? new Date(j.createdAt) : null;
+              const likesCount = j.likesCount || 0;
 
               return (
                 <div key={j._id} className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 hover:border-gray-600 transition-all duration-300">
-                  <div className="flex items-center justify-between gap-4 mb-5">
+                  <div className="flex items-start justify-between gap-4 mb-5">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-11 h-11 rounded-full overflow-hidden bg-gray-700 flex-shrink-0 cursor-pointer ring-2 ring-transparent hover:ring-primary-400 transition-all"
-                        onClick={() => author?.username && navigate(`/profile/${author.username}`)}
-                      >
-                        {author?.profilePicture ? (
-                          <img src={author.profilePicture} alt={author.username} className="w-full h-full object-cover" />
+                      <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
+                        {user?.profilePicture ? (
+                          <img src={user.profilePicture} alt={user.username} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300 font-semibold text-base">
-                            {(author?.username || '?').charAt(0).toUpperCase()}
+                            {(user?.username || '?').charAt(0).toUpperCase()}
                           </div>
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div
-                          className="text-white font-semibold truncate cursor-pointer hover:text-primary-400 transition text-[15px]"
-                          onClick={() => author?.username && navigate(`/profile/${author.username}`)}
-                        >
-                          {author?.username || 'Unknown'}
+                        <div className="text-white font-semibold truncate text-[15px]">
+                          {user?.username || 'You'}
                         </div>
                         <div className="text-xs text-gray-500">
                           {created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
                         </div>
                       </div>
                     </div>
+                    <button
+                      onClick={() => handleDelete(j._id)}
+                      disabled={deleteLoading === j._id}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      {deleteLoading === j._id ? 'Deleting...' : 'Delete'}
+                    </button>
                   </div>
 
                   <h2 className="text-2xl font-bold text-white mb-4 leading-tight">{j.title}</h2>
 
-                  {/* LinkedIn-style: text first */}
-                  <p className="text-gray-300 leading-relaxed line-clamp-4 mb-3 text-[15px]">
-                    {preview}{isLong ? '…' : ''}
+                  <p className="text-gray-300 leading-relaxed line-clamp-4 mb-4 text-[15px]">
+                    {preview}{previewText.length > 220 ? '…' : ''}
                   </p>
-                  {isLong && (
-                    <button
-                      className="text-primary-400 hover:text-primary-300 transition text-sm font-semibold mb-4 inline-flex items-center gap-1"
-                      onClick={() => navigate(`/journal/${j._id}`)}
-                    >
-                      Read more
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  )}
 
-                  {/* Then media preview (fixed, post-like) */}
                   {firstImg && (
-                    <div className="flex justify-center mt-4">
+                    <div className="flex justify-center mt-4 mb-4">
                       <div className="rounded-xl overflow-hidden bg-gray-900/50 border border-gray-700/50 max-w-md shadow-md">
                         <img
                           src={firstImg}
@@ -165,17 +156,13 @@ const Journal = () => {
                   )}
 
                   <div className="mt-5 pt-4 border-t border-gray-700/50">
-                    <button
-                      className="text-gray-400 hover:text-primary-400 transition text-sm font-medium inline-flex items-center gap-1.5"
-                      onClick={() => {
-                        if (author?.username) navigate(`/profile/${author.username}`);
-                      }}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <svg className="w-5 h-5 text-primary-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
                       </svg>
-                      View author profile
-                    </button>
+                      <span className="font-semibold text-white">{likesCount}</span>
+                      <span>{likesCount === 1 ? 'Like' : 'Likes'}</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -209,4 +196,4 @@ const Journal = () => {
   );
 };
 
-export default Journal;
+export default ManageJournal;

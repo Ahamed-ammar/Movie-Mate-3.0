@@ -9,7 +9,7 @@ const likeSchema = new mongoose.Schema({
   },
   targetType: {
     type: String,
-    enum: ['review', 'list', 'diary', 'comment'],
+    enum: ['review', 'list', 'diary', 'comment', 'journal'],
     required: [true, 'Target type is required']
   },
   targetId: {

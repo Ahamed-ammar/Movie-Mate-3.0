@@ -87,3 +87,110 @@ html {
   border: 1px solid #374151; /* gray-700 */
   color: #fff;
 }
+
+/* Journal Detail - Reading Experience */
+.journal-content {
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.9;
+  letter-spacing: 0.01em;
+}
+
+.journal-content p {
+  margin-bottom: 1.75rem; /* Gap between paragraphs */
+  color: #d1d5db;
+}
+
+.journal-content h1,
+.journal-content h2,
+.journal-content h3,
+.journal-content h4,
+.journal-content h5,
+.journal-content h6 {
+  color: #ffffff;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.4;
+}
+
+.journal-content h1 { font-size: 2rem; }
+.journal-content h2 { font-size: 1.75rem; }
+.journal-content h3 { font-size: 1.5rem; }
+
+.journal-content ul,
+.journal-content ol {
+  margin-bottom: 1.75rem;
+  padding-left: 2rem;
+  color: #d1d5db;
+}
+
+.journal-content li {
+  margin-bottom: 0.75rem;
+}
+
+.journal-content strong,
+.journal-content b {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.journal-content em,
+.journal-content i {
+  font-style: italic;
+  color: #e5e7eb;
+}
+
+.journal-content a {
+  color: #fbbf24; /* yellow-400 */
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.journal-content a:hover {
+  color: #f59e0b; /* yellow-500 */
+}
+
+.journal-content blockquote {
+  border-left: 4px solid #fbbf24;
+  padding-left: 1.5rem;
+  margin: 2rem 0;
+  font-style: italic;
+  color: #e5e7eb;
+}
+
+.journal-content code {
+  background: #1f2937;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+  color: #fbbf24;
+}
+
+.journal-content pre {
+  background: #1f2937;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.journal-content pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .journal-content {
+    font-size: 1rem; /* 16px on mobile */
+    line-height: 1.8;
+  }
+  
+  .journal-content p {
+    margin-bottom: 1.5rem;
+  }
+  
+  .journal-content h1 { font-size: 1.75rem; }
+  .journal-content h2 { font-size: 1.5rem; }
+  .journal-content h3 { font-size: 1.25rem; }
+}

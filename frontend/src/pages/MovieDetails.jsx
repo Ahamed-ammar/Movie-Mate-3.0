@@ -335,39 +335,39 @@ const MovieDetails = () => {
     <div>
       {/* Hero Section with Backdrop */}
       <div
-        className="relative h-96 bg-cover bg-center"
+        className="relative h-64 sm:h-80 md:h-96 bg-cover bg-center"
         style={{ backgroundImage: `url(${backdropUrl})` }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent" />
         <div className="absolute inset-0 flex items-end">
-          <div className="container mx-auto px-4 pb-8">
-            <div className="flex flex-col md:flex-row gap-6">
+          <div className="container mx-auto px-4 pb-4 sm:pb-6 md:pb-8">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
               <img
                 src={movie.poster || `${TMDB_IMAGE_BASE_URL}${movie.poster_path || ''}`}
                 alt={movie.title}
-                className="w-48 h-72 object-cover rounded-lg shadow-2xl"
+                className="w-32 h-48 sm:w-40 sm:h-60 md:w-48 md:h-72 object-cover rounded-lg shadow-2xl mx-auto sm:mx-0"
                 onError={(e) => {
                   e.target.src = 'https://via.placeholder.com/500x750?text=No+Poster';
                 }}
               />
-              <div className="flex-1 text-white">
-                <h1 className="text-4xl font-bold mb-2">{movie.title}</h1>
+              <div className="flex-1 text-white text-center sm:text-left">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">{movie.title}</h1>
                 {movie.releaseDate && (
-                  <p className="text-xl text-gray-300 mb-4">
+                  <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-2 sm:mb-4">
                     {new Date(movie.releaseDate).getFullYear()}
                   </p>
                 )}
                 {movie.rating && (
-                  <div className="mb-4">
-                    <span className="text-lg">TMDB Rating: ⭐ {movie.rating.toFixed(1)}</span>
+                  <div className="mb-2 sm:mb-4">
+                    <span className="text-sm sm:text-base md:text-lg">TMDB Rating: ⭐ {movie.rating.toFixed(1)}</span>
                   </div>
                 )}
                 {movie.genres && movie.genres.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  <div className="flex flex-wrap gap-2 mb-2 sm:mb-4 justify-center sm:justify-start">
                     {movie.genres.map((genre, index) => (
                       <span
                         key={index}
-                        className="bg-primary-600/80 text-white px-3 py-1 rounded-full text-sm"
+                        className="bg-primary-600/80 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm"
                       >
                         {genre}
                       </span>
@@ -380,12 +380,12 @@ const MovieDetails = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="container mx-auto px-4 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            <div className="mb-8">
-              <h2 className="text-2xl font-semibold mb-4 text-white">Overview</h2>
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-white">Overview</h2>
               <p className="text-gray-300 leading-relaxed">
                 {movie.overview || 'No overview available.'}
               </p>
@@ -393,8 +393,8 @@ const MovieDetails = () => {
 
             {/* Director Section */}
             {movie.director && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-semibold mb-4 text-white">Director</h2>
+              <div className="mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-white">Director</h2>
                 <div 
                   className="flex items-center space-x-4 cursor-pointer hover:bg-gray-700/30 p-3 rounded-lg transition"
                   onClick={() => navigate(`/person/${encodeURIComponent(movie.director.name)}?role=crew`)}
@@ -404,15 +404,15 @@ const MovieDetails = () => {
                     <img
                       src={movie.director.profile_path}
                       alt={movie.director.name}
-                      className="w-20 h-20 rounded-full object-cover"
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover"
                       onError={(e) => {
                         e.target.src = 'https://via.placeholder.com/200?text=No+Photo';
                       }}
                     />
                   )}
                   <div>
-                    <h3 className="text-xl font-semibold text-white hover:text-primary-400 transition">{movie.director.name}</h3>
-                    <p className="text-gray-400">Director</p>
+                    <h3 className="text-base sm:text-lg md:text-xl font-semibold text-white hover:text-primary-400 transition">{movie.director.name}</h3>
+                    <p className="text-sm sm:text-base text-gray-400">Director</p>
                   </div>
                 </div>
               </div>
@@ -420,9 +420,9 @@ const MovieDetails = () => {
 
             {/* Cast Section */}
             {movie.actors && movie.actors.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-2xl font-semibold mb-4 text-white">Cast</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-white">Cast</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                   {movie.actors.map((actor, index) => (
                     <div 
                       key={index} 

@@ -13,7 +13,9 @@ import Profile from './pages/Profile';
 import MyLists from './pages/MyLists';
 import Members from './pages/Members';
 import Journal from './pages/Journal';
+import JournalDetail from './pages/JournalDetail';
 import WriteJournal from './pages/WriteJournal';
+import ManageJournal from './pages/ManageJournal';
 import PlaylistDetails from './pages/PlaylistDetails';
 import PersonMovies from './pages/PersonMovies';
 
@@ -36,11 +38,20 @@ function App() {
               <Route path="/profile/:username" element={<Profile />} />
               <Route path="/members" element={<Members />} />
               <Route path="/journal" element={<Journal />} />
+              <Route path="/journal/:id" element={<JournalDetail />} />
               <Route
                 path="/journal/write"
                 element={
                   <ProtectedRoute>
                     <WriteJournal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/journal/manage"
+                element={
+                  <ProtectedRoute>
+                    <ManageJournal />
                   </ProtectedRoute>
                 }
               />

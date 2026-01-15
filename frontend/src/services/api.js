@@ -154,7 +154,10 @@ export const connectionsAPI = {
 // Journals API
 export const journalsAPI = {
   getAll: (page = 1, limit = 20) => api.get('/journals', { params: { page, limit } }),
+  getMy: (page = 1, limit = 20) => api.get('/journals/my', { params: { page, limit } }),
+  getById: (id) => api.get(`/journals/${id}`),
   create: (data) => api.post('/journals', data),
+  delete: (id) => api.delete(`/journals/${id}`),
   uploadJournalImage: (file) => {
     const formData = new FormData();
     formData.append('image', file);
