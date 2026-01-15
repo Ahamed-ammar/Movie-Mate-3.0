@@ -42,3 +42,48 @@ html {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+/* Journal editor (ReactQuill) dark theme to match inputs */
+.journal-editor .ql-toolbar.ql-snow {
+  background: #111827; /* gray-900 */
+  border: 0;
+  border-bottom: 1px solid #374151; /* gray-700 */
+}
+
+.journal-editor .ql-container.ql-snow {
+  background: #111827; /* gray-900 */
+  border: 0;
+  color: #fff;
+}
+
+.journal-editor .ql-editor {
+  min-height: 220px;
+  color: #fff;
+}
+
+.journal-editor .ql-editor.ql-blank::before {
+  color: #9ca3af; /* gray-400 */
+}
+
+.journal-editor .ql-snow .ql-stroke {
+  stroke: #e5e7eb; /* gray-200 */
+}
+
+.journal-editor .ql-snow .ql-fill {
+  fill: #e5e7eb; /* gray-200 */
+}
+
+.journal-editor .ql-snow .ql-picker {
+  color: #e5e7eb; /* gray-200 */
+}
+
+.journal-editor .ql-snow .ql-picker-options {
+  background: #111827; /* gray-900 */
+  border: 1px solid #374151; /* gray-700 */
+}
+
+.journal-editor .ql-snow .ql-tooltip {
+  background: #111827; /* gray-900 */
+  border: 1px solid #374151; /* gray-700 */
+  color: #fff;
+}

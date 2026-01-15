@@ -16,6 +16,10 @@ import reviewRoutes from './routes/reviewRoutes.js';
 import listRoutes from './routes/listRoutes.js';
 import connectionRoutes from './routes/connectionRoutes.js';
 import playlistRoutes from './routes/playlistRoutes.js';
+import journalRoutes from './routes/journalRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Connect to database
 connectDB();
@@ -32,6 +36,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Static uploads
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -40,6 +49,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/lists', listRoutes);
 app.use('/api/connections', connectionRoutes);
 app.use('/api/playlists', playlistRoutes);
+app.use('/api/journals', journalRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

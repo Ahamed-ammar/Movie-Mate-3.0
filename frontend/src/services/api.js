@@ -1,6 +1,16 @@
 import axios from 'axios';
 import { API_URL } from '../utils/constants.js';
 
+const BACKEND_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+
+const resolveUploadUrl = (url) => {
+  if (!url) return url;
+  if (typeof url !== 'string') return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/uploads/')) return `${BACKEND_ORIGIN}${url}`;
+  return url;
+};
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
@@ -139,6 +149,25 @@ export const connectionsAPI = {
   acceptRequest: (connectionId) => api.put(`/connections/accept/${connectionId}`),
   rejectRequest: (connectionId) => api.delete(`/connections/reject/${connectionId}`),
   removeConnection: (connectionId) => api.delete(`/connections/${connectionId}`)
+};
+
+// Journals API
+export const journalsAPI = {
+  getAll: (page = 1, limit = 20) => api.get('/journals', { params: { page, limit } }),
+  create: (data) => api.post('/journals', data),
+  uploadJournalImage: (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post('/uploads/journal-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then((res) => {
+      const url = res?.data?.data?.url;
+      if (url) {
+        res.data.data.url = resolveUploadUrl(url);
+      }
+      return res;
+    });
+  }
 };
 
 // Playlists API
