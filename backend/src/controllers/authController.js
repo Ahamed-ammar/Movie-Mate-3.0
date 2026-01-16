@@ -1,6 +1,35 @@
 import User from '../models/User.js';
 import { generateAccessToken, generateRefreshToken } from '../middleware/auth.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { OAuth2Client } from 'google-auth-library';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const buildUserResponse = (user) => ({
+  id: user._id,
+  username: user.username,
+  email: user.email,
+  bio: user.bio,
+  profilePicture: user.profilePicture,
+  joinedDate: user.joinedDate,
+  role: user.role
+});
+
+const generateUniqueUsername = async (base) => {
+  const normalized = (base || 'movie-mate-user')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 20) || 'moviemate';
+  let candidate = normalized;
+  let counter = 1;
+
+  // Ensure uniqueness
+  while (await User.findOne({ username: candidate })) {
+    candidate = `${normalized}${counter}`;
+    counter += 1;
+  }
+  return candidate;
+};
 
 // @desc    Register new user
 // @route   POST /api/auth/register
@@ -43,15 +72,7 @@ export const register = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     data: {
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        bio: user.bio,
-        profilePicture: user.profilePicture,
-        joinedDate: user.joinedDate,
-        role: user.role
-      },
+      user: buildUserResponse(user),
       accessToken
     }
   });
@@ -121,15 +142,7 @@ export const login = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        bio: user.bio,
-        profilePicture: user.profilePicture,
-        joinedDate: user.joinedDate,
-        role: user.role
-      },
+      user: buildUserResponse(user),
       accessToken
     }
   });
@@ -210,15 +223,95 @@ export const getMe = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: {
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        bio: user.bio,
-        profilePicture: user.profilePicture,
-        joinedDate: user.joinedDate,
-        role: user.role
+      user: buildUserResponse(user)
+    }
+  });
+});
+
+// @desc    Google OAuth login
+// @route   POST /api/auth/google
+// @access  Public
+export const googleLogin = asyncHandler(async (req, res) => {
+  const { idToken } = req.body;
+
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(500).json({
+      success: false,
+      error: 'Google client ID is not configured'
+    });
+  }
+
+  if (!idToken) {
+    return res.status(400).json({
+      success: false,
+      error: 'Google ID token is required'
+    });
+  }
+
+  const ticket = await googleClient.verifyIdToken({
+    idToken,
+    audience: process.env.GOOGLE_CLIENT_ID
+  });
+  const payload = ticket.getPayload();
+
+  if (!payload?.email) {
+    return res.status(400).json({
+      success: false,
+      error: 'Google account email is required'
+    });
+  }
+
+  const email = payload.email.toLowerCase();
+  const googleId = payload.sub;
+  const displayName = payload.name || email.split('@')[0];
+  const picture = payload.picture || '';
+
+  let user = await User.findOne({ email });
+
+  if (user) {
+    if (user.googleId && user.googleId !== googleId) {
+      return res.status(409).json({
+        success: false,
+        error: 'This email is already linked to another Google account'
+      });
+    }
+    // Link account by email if not already linked
+    if (!user.googleId) {
+      user.googleId = googleId;
+      user.provider = 'google';
+      if (!user.profilePicture && picture) {
+        user.profilePicture = picture;
       }
+    }
+  } else {
+    const username = await generateUniqueUsername(displayName);
+    user = await User.create({
+      username,
+      email,
+      googleId,
+      provider: 'google',
+      profilePicture: picture
+    });
+  }
+
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+  });
+
+  res.json({
+    success: true,
+    data: {
+      user: buildUserResponse(user),
+      accessToken
     }
   });
 });

@@ -28,8 +28,23 @@ connectDB();
 const app = express();
 
 // Middleware
+const defaultOrigins = ['http://localhost:5173'];
+const envOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const devOrigins = process.env.NODE_ENV !== 'production'
+  ? ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000', 'http://localhost:4173']
+  : [];
+const allowedOrigins = [...new Set([...defaultOrigins, ...envOrigins, ...devOrigins])];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true
 }));
 app.use(express.json());

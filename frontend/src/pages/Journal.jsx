@@ -12,6 +12,8 @@ const resolveUploadUrl = (url) => {
   if (!url) return url;
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   if (url.startsWith('/uploads/')) return `${BACKEND_ORIGIN}${url}`;
+  if (url.startsWith('uploads/')) return `${BACKEND_ORIGIN}/${url}`;
+  if (url.startsWith('public/uploads/')) return `${BACKEND_ORIGIN}/${url.replace(/^public\//, '')}`;
   return url;
 };
 
@@ -97,6 +99,7 @@ const Journal = () => {
               const preview = previewText.slice(0, previewLimit);
               const firstImgRaw = Array.isArray(j.imageUrls) && j.imageUrls.length > 0 ? j.imageUrls[0] : null;
               const firstImg = firstImgRaw ? resolveUploadUrl(firstImgRaw) : null;
+              const authorAvatar = author?.profilePicture ? resolveUploadUrl(author.profilePicture) : null;
               const created = j.createdAt ? new Date(j.createdAt) : null;
 
               return (
@@ -104,15 +107,21 @@ const Journal = () => {
                   <div className="flex items-center justify-between gap-4 mb-5">
                     <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className="w-11 h-11 rounded-full overflow-hidden bg-gray-700 flex-shrink-0 cursor-pointer ring-2 ring-transparent hover:ring-primary-400 transition-all"
+                        className="relative w-11 h-11 rounded-full overflow-hidden bg-gray-700 flex-shrink-0 cursor-pointer ring-2 ring-transparent hover:ring-primary-400 transition-all"
                         onClick={() => author?.username && navigate(`/profile/${author.username}`)}
                       >
-                        {author?.profilePicture ? (
-                          <img src={author.profilePicture} alt={author.username} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 font-semibold text-base">
-                            {(author?.username || '?').charAt(0).toUpperCase()}
-                          </div>
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 font-semibold text-base">
+                          {(author?.username || '?').charAt(0).toUpperCase()}
+                        </div>
+                        {authorAvatar && (
+                          <img
+                            src={authorAvatar}
+                            alt={author.username}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
                         )}
                       </div>
                       <div className="min-w-0">

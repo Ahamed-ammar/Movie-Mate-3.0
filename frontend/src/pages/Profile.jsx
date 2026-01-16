@@ -8,6 +8,17 @@ import PlaylistForm from '../components/playlists/PlaylistForm';
 import Loading from '../components/common/Loading';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../utils/constants';
+
+const BACKEND_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+const resolveUploadUrl = (url) => {
+  if (!url) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/uploads/')) return `${BACKEND_ORIGIN}${url}`;
+  if (url.startsWith('uploads/')) return `${BACKEND_ORIGIN}/${url}`;
+  if (url.startsWith('public/uploads/')) return `${BACKEND_ORIGIN}/${url.replace(/^public\//, '')}`;
+  return url;
+};
 
 const Profile = () => {
   const { username } = useParams();
@@ -211,6 +222,7 @@ const Profile = () => {
   if (!user) return <div className="text-white text-center py-20">User not found</div>;
 
   const isOwnProfile = currentUser && (currentUser.id === user.id || currentUser._id === user.id);
+  const profileAvatar = user?.profilePicture ? resolveUploadUrl(user.profilePicture) : null;
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -537,15 +549,17 @@ const Profile = () => {
                         to={displayLink}
                         className="flex items-center space-x-3 flex-1"
                       >
-                        <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-white">
-                          {conn.user.profilePicture ? (
+                        <div className="relative w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-white overflow-hidden">
+                          <span>{displayName.charAt(0).toUpperCase()}</span>
+                          {conn.user.profilePicture && (
                             <img
-                              src={conn.user.profilePicture}
+                              src={resolveUploadUrl(conn.user.profilePicture)}
                               alt={displayName}
-                              className="w-full h-full rounded-full object-cover"
+                              className="absolute inset-0 w-full h-full rounded-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
                             />
-                          ) : (
-                            <span>{displayName.charAt(0).toUpperCase()}</span>
                           )}
                         </div>
                         <div>
@@ -581,15 +595,17 @@ const Profile = () => {
       {/* Profile Header */}
       <div className="bg-[#1a1a1a] rounded-lg p-8 mb-8">
         <div className="flex items-start gap-6">
-          <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-4xl text-white">
-            {user.profilePicture ? (
+          <div className="relative w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-4xl text-white overflow-hidden">
+            <span>{user.username.charAt(0).toUpperCase()}</span>
+            {profileAvatar && (
               <img
-                src={user.profilePicture}
+                src={profileAvatar}
                 alt={user.username}
-                className="w-full h-full rounded-full object-cover"
+                className="absolute inset-0 w-full h-full rounded-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
               />
-            ) : (
-              <span>{user.username.charAt(0).toUpperCase()}</span>
             )}
           </div>
           <div className="flex-1">

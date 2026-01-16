@@ -11,6 +11,8 @@ const resolveUploadUrl = (url) => {
   if (!url) return url;
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   if (url.startsWith('/uploads/')) return `${BACKEND_ORIGIN}${url}`;
+  if (url.startsWith('uploads/')) return `${BACKEND_ORIGIN}/${url}`;
+  if (url.startsWith('public/uploads/')) return `${BACKEND_ORIGIN}/${url.replace(/^public\//, '')}`;
   return url;
 };
 
@@ -52,6 +54,7 @@ const JournalDetail = () => {
     ? journal.imageUrls.map(url => resolveUploadUrl(url)).filter(Boolean)
     : [];
   const isOwner = user && author && user.userId === author._id;
+  const authorAvatar = author?.profilePicture ? resolveUploadUrl(author.profilePicture) : null;
 
   return (
     <div className="min-h-screen bg-[#0f0f0f]">
@@ -75,15 +78,21 @@ const JournalDetail = () => {
             <div className="flex items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-4">
                 <div
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-700 flex-shrink-0 cursor-pointer ring-2 ring-transparent hover:ring-yellow-400 transition-all"
+                  className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-700 flex-shrink-0 cursor-pointer ring-2 ring-transparent hover:ring-yellow-400 transition-all"
                   onClick={() => author?.username && navigate(`/profile/${author.username}`)}
                 >
-                  {author?.profilePicture ? (
-                    <img src={author.profilePicture} alt={author.username} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 font-bold text-xl">
-                      {(author?.username || '?').charAt(0).toUpperCase()}
-                    </div>
+                  <div className="w-full h-full flex items-center justify-center text-gray-300 font-bold text-xl">
+                    {(author?.username || '?').charAt(0).toUpperCase()}
+                  </div>
+                  {authorAvatar && (
+                    <img
+                      src={authorAvatar}
+                      alt={author.username}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                   )}
                 </div>
                 <div>

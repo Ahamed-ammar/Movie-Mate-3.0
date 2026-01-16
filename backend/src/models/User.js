@@ -32,6 +32,16 @@ const userSchema = new mongoose.Schema({
     },
     default: null
   },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  provider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
   role: {
     type: String,
     enum: ['user', 'admin'],
@@ -39,9 +49,14 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function() {
+      return !this.googleId;
+    },
     validate: {
       validator: function(value) {
+        if (!value) {
+          return this.googleId ? true : false;
+        }
         // Admin users can have shorter passwords (min 3), regular users need 6
         if (this.role === 'admin') {
           return value && value.length >= 3;
@@ -87,8 +102,8 @@ userSchema.pre('save', async function(next) {
       return next(new Error(`Password must be at least ${minLength} characters${this.role === 'admin' ? ' for admin' : ''}`));
     }
   }
-  
-  if (!this.isModified('password')) {
+
+  if (!this.isModified('password') || !this.password) {
     return next();
   }
   const salt = await bcrypt.genSalt(10);
@@ -98,6 +113,9 @@ userSchema.pre('save', async function(next) {
 
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
+  if (!this.password) {
+    return false;
+  }
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

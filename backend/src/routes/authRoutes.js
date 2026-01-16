@@ -4,7 +4,8 @@ import {
   login,
   logout,
   refreshToken,
-  getMe
+  getMe,
+  googleLogin
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -12,6 +13,7 @@ const router = express.Router();
 
 router.post('/register', register);
 router.post('/login', login);
+router.post('/google', googleLogin);
 router.post('/logout', protect, logout);
 router.post('/refresh', refreshToken);
 router.get('/me', protect, getMe);

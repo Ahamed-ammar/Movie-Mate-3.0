@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -7,9 +7,57 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleError, setGoogleError] = useState('');
+  const googleButtonRef = useRef(null);
   
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  useEffect(() => {
+    if (!googleClientId) return;
+
+    const initializeGoogle = () => {
+      if (!window.google || !googleButtonRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async (response) => {
+          setGoogleError('');
+          const result = await googleLogin(response.credential);
+          if (result.success) {
+            navigate('/');
+          } else {
+            setGoogleError(result.error);
+          }
+        }
+      });
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'pill',
+        width: 320
+      });
+    };
+
+    if (window.google) {
+      initializeGoogle();
+      return;
+    }
+
+    const scriptId = 'google-identity-service';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeGoogle;
+      document.body.appendChild(script);
+    } else {
+      initializeGoogle();
+    }
+  }, [googleClientId, googleLogin, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,7 +98,30 @@ const Login = () => {
             </Link>
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <div className="mt-6">
+          {googleError && (
+            <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded mb-4">
+              {googleError}
+            </div>
+          )}
+          {googleClientId ? (
+            <div className="flex justify-center">
+              <div ref={googleButtonRef} />
+            </div>
+          ) : (
+            <p className="text-center text-sm text-gray-400">
+              Google login is not configured.
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center my-6">
+          <div className="flex-1 border-t border-gray-700" />
+          <span className="px-3 text-sm text-gray-500">or</span>
+          <div className="flex-1 border-t border-gray-700" />
+        </div>
+
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded">
               {error}

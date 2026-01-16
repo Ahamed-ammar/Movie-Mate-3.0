@@ -1,12 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { moviesAPI, journalsAPI, reviewsAPI } from '../services/api';
+import { moviesAPI, journalsAPI } from '../services/api';
 import { TMDB_IMAGE_BASE_URL } from '../utils/constants';
 import { useAuth } from '../contexts/AuthContext';
 import Loading from '../components/common/Loading';
 import PopularReviewsSection from '../components/reviews/PopularReviewsSection';
+import { API_URL } from '../utils/constants';
 
 const Landing = () => {
+  const BACKEND_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+  const resolveUploadUrl = (url) => {
+    if (!url) return url;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('/uploads/')) return `${BACKEND_ORIGIN}${url}`;
+    if (url.startsWith('uploads/')) return `${BACKEND_ORIGIN}/${url}`;
+    if (url.startsWith('public/uploads/')) return `${BACKEND_ORIGIN}/${url.replace(/^public\//, '')}`;
+    return url;
+  };
   const { isAuthenticated } = useAuth();
   const [popularMovies, setPopularMovies] = useState([]);
   const [journals, setJournals] = useState([]);
@@ -205,13 +215,19 @@ const Landing = () => {
                 className="bg-gray-800 rounded-xl p-4 sm:p-6 hover:bg-gray-750 transition-all duration-200 border border-gray-700 hover:border-gray-600"
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
-                    {journal.userId?.profilePicture ? (
-                      <img src={journal.userId.profilePicture} alt={journal.userId.username} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      <span className="text-gray-300 font-semibold">
-                        {(journal.userId?.username || '?').charAt(0).toUpperCase()}
-                      </span>
+                  <div className="relative w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                    <span className="text-gray-300 font-semibold">
+                      {(journal.userId?.username || '?').charAt(0).toUpperCase()}
+                    </span>
+                    {journal.userId?.profilePicture && (
+                      <img
+                        src={resolveUploadUrl(journal.userId.profilePicture)}
+                        alt={journal.userId.username}
+                        className="absolute inset-0 w-full h-full rounded-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

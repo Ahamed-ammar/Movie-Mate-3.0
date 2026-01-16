@@ -12,6 +12,8 @@ const resolveUploadUrl = (url) => {
   if (!url) return url;
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   if (url.startsWith('/uploads/')) return `${BACKEND_ORIGIN}${url}`;
+  if (url.startsWith('uploads/')) return `${BACKEND_ORIGIN}/${url}`;
+  if (url.startsWith('public/uploads/')) return `${BACKEND_ORIGIN}/${url.replace(/^public\//, '')}`;
   return url;
 };
 
@@ -101,18 +103,25 @@ const ManageJournal = () => {
               const firstImg = firstImgRaw ? resolveUploadUrl(firstImgRaw) : null;
               const created = j.createdAt ? new Date(j.createdAt) : null;
               const likesCount = j.likesCount || 0;
+              const authorAvatar = user?.profilePicture ? resolveUploadUrl(user.profilePicture) : null;
 
               return (
                 <div key={j._id} className="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 hover:border-gray-600 transition-all duration-300">
                   <div className="flex items-start justify-between gap-4 mb-5">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-11 h-11 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
-                        {user?.profilePicture ? (
-                          <img src={user.profilePicture} alt={user.username} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 font-semibold text-base">
-                            {(user?.username || '?').charAt(0).toUpperCase()}
-                          </div>
+                      <div className="relative w-11 h-11 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 font-semibold text-base">
+                          {(user?.username || '?').charAt(0).toUpperCase()}
+                        </div>
+                        {authorAvatar && (
+                          <img
+                            src={authorAvatar}
+                            alt={user.username}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
                         )}
                       </div>
                       <div className="min-w-0">
