@@ -18,6 +18,7 @@ import WriteJournal from './pages/WriteJournal';
 import ManageJournal from './pages/ManageJournal';
 import PlaylistDetails from './pages/PlaylistDetails';
 import PersonMovies from './pages/PersonMovies';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
@@ -60,6 +61,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <MyLists />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
                   </ProtectedRoute>
                 }
               />

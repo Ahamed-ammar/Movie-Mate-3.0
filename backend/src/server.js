@@ -18,6 +18,7 @@ import connectionRoutes from './routes/connectionRoutes.js';
 import playlistRoutes from './routes/playlistRoutes.js';
 import journalRoutes from './routes/journalRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -66,6 +67,7 @@ app.use('/api/connections', connectionRoutes);
 app.use('/api/playlists', playlistRoutes);
 app.use('/api/journals', journalRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -181,7 +181,7 @@ const Profile = () => {
             } else {
               // Load connections for the profile user (only if connected)
               // Check if user is authenticated first
-              if (!currentUser || !isAuthenticated) {
+              if (!currentUser) {
                 setData(prev => ({ ...prev, network: { connections: [] } }));
                 break;
               }
@@ -492,7 +492,7 @@ const Profile = () => {
         // If viewing another user's profile
         if (!isOwnProfile) {
           // Check if user is authenticated
-          if (!isAuthenticated || !currentUser) {
+          if (!currentUser) {
             return (
               <div className="text-center py-12 sm:py-20">
                 <p className="text-gray-400 text-sm sm:text-lg px-4">Please login to view this user's network</p>

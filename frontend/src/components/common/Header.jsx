@@ -110,6 +110,16 @@ const Header = () => {
               >
                 JOURNAL
               </Link>
+              {isAuthenticated && user?.role === 'admin' && (
+                <Link
+                  to="/admin"
+                  className={`text-sm uppercase font-semibold tracking-wider transition-all duration-200 hover:scale-105 ${
+                    isActive('/admin') ? 'text-red-400' : 'text-red-400/70 hover:text-red-400'
+                  }`}
+                >
+                  ADMIN
+                </Link>
+              )}
             </nav>
           </div>
 
@@ -226,6 +236,18 @@ const Header = () => {
             >
               Journal
             </Link>
+
+            {isAuthenticated && user?.role === 'admin' && (
+              <Link
+                to="/admin"
+                onClick={closeMobileMenu}
+                className={`block px-3 py-2 rounded-lg transition ${
+                  isActive('/admin') ? 'bg-red-900 text-white' : 'text-red-400 hover:bg-red-900/50 hover:text-white'
+                }`}
+              >
+                Admin Dashboard
+              </Link>
+            )}
 
             <div className="border-t border-gray-700 pt-2 mt-2">
               {isAuthenticated ? (
