@@ -333,7 +333,7 @@ const Profile = () => {
         <div>
           <button
             onClick={() => setEditingPlaylist(null)}
-            className="mb-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition text-sm font-medium"
+            className="mb-4 px-3 sm:px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition text-xs sm:text-sm font-medium"
           >
             ← Back to Playlists
           </button>
@@ -351,7 +351,7 @@ const Profile = () => {
         <div>
           <button
             onClick={() => setShowCreateForm(false)}
-            className="mb-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition text-sm font-medium"
+            className="mb-4 px-3 sm:px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition text-xs sm:text-sm font-medium"
           >
             ← Back to Playlists
           </button>
@@ -366,28 +366,28 @@ const Profile = () => {
     return (
       <div>
         {isOwnProfile && (
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-white">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">
               Playlists ({playlists.length})
             </h3>
             <button
               onClick={() => setShowCreateForm(true)}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-medium"
+              className="px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-xs sm:text-sm font-medium"
             >
               + Create Playlist
             </button>
           </div>
         )}
         {playlists.length === 0 ? (
-          <div className="text-center py-20 bg-gray-800 rounded-lg">
-            <p className="text-gray-400">
+          <div className="text-center py-12 sm:py-20 bg-gray-800 rounded-lg">
+            <p className="text-gray-400 text-sm sm:text-base px-4">
               {isOwnProfile 
                 ? 'You have no playlists yet. Click "Create Playlist" to get started.'
                 : 'This user has no playlists yet.'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {playlists.map((playlist) => (
               <PlaylistCard
                 key={playlist._id}
@@ -407,9 +407,9 @@ const Profile = () => {
         return (
           <div>
             {data.reviews.length === 0 ? (
-              <p className="text-gray-400 text-center py-20">No reviews yet.</p>
+              <p className="text-gray-400 text-center py-12 sm:py-20 text-sm sm:text-base">No reviews yet.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {data.reviews.map((review) => (
                   <ReviewCard key={review._id} review={review} />
                 ))}
@@ -420,39 +420,39 @@ const Profile = () => {
       case 'watchlist':
         if (!isOwnProfile) {
           return (
-            <div className="text-center py-20">
-              <p className="text-gray-400 text-lg">Watchlist is private</p>
+            <div className="text-center py-12 sm:py-20">
+              <p className="text-gray-400 text-sm sm:text-lg">Watchlist is private</p>
             </div>
           );
         }
 
         if (loadingWatchlist) {
           return (
-            <div className="text-center py-20">
-              <p className="text-gray-400 text-lg">Loading watchlist...</p>
+            <div className="text-center py-12 sm:py-20">
+              <p className="text-gray-400 text-sm sm:text-lg">Loading watchlist...</p>
             </div>
           );
         }
 
         return (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-white">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+              <h3 className="text-lg sm:text-xl font-semibold text-white">
                 Watchlist ({data.watchlist.length})
               </h3>
               <Link
                 to="/browse?addToWatchlist=true"
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm font-medium"
+                className="px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-xs sm:text-sm font-medium text-center"
               >
                 + Add Movies
               </Link>
             </div>
             {data.watchlist.length === 0 ? (
-              <div className="text-center py-20 bg-gray-800 rounded-lg">
-                <p className="text-gray-400">Your watchlist is empty. Click "Add Movies" to get started.</p>
+              <div className="text-center py-12 sm:py-20 bg-gray-800 rounded-lg">
+                <p className="text-gray-400 text-sm sm:text-base px-4">Your watchlist is empty. Click "Add Movies" to get started.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
                 {data.watchlist.map((entry) => (
                   <MovieCard key={entry._id} movie={entry.movieId} />
                 ))}
@@ -471,14 +471,14 @@ const Profile = () => {
         );
       case 'likes':
         return (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">Likes coming soon</p>
+          <div className="text-center py-12 sm:py-20">
+            <p className="text-gray-400 text-sm sm:text-lg">Likes coming soon</p>
           </div>
         );
       case 'tags':
         return (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">Tags coming soon</p>
+          <div className="text-center py-12 sm:py-20">
+            <p className="text-gray-400 text-sm sm:text-lg">Tags coming soon</p>
           </div>
         );
       case 'network':
@@ -494,8 +494,8 @@ const Profile = () => {
           // Check if user is authenticated
           if (!isAuthenticated || !currentUser) {
             return (
-              <div className="text-center py-20">
-                <p className="text-gray-400 text-lg">Please login to view this user's network</p>
+              <div className="text-center py-12 sm:py-20">
+                <p className="text-gray-400 text-sm sm:text-lg px-4">Please login to view this user's network</p>
               </div>
             );
           }
@@ -503,8 +503,8 @@ const Profile = () => {
           // If connection status is still loading, show loading state
           if (loadingConnectionStatus) {
             return (
-              <div className="text-center py-20">
-                <p className="text-gray-400 text-lg">Loading...</p>
+              <div className="text-center py-12 sm:py-20">
+                <p className="text-gray-400 text-sm sm:text-lg">Loading...</p>
               </div>
             );
           }
@@ -512,8 +512,8 @@ const Profile = () => {
           // If not connected, show message
           if (!isConnected) {
             return (
-              <div className="text-center py-20">
-                <p className="text-gray-400 text-lg">Connect to view this user's network</p>
+              <div className="text-center py-12 sm:py-20">
+                <p className="text-gray-400 text-sm sm:text-lg px-4">Connect to view this user's network</p>
               </div>
             );
           }
@@ -522,13 +522,13 @@ const Profile = () => {
         // If own profile or connected, show connections (even if empty array)
         return (
           <div>
-            <h3 className="text-xl font-semibold mb-4 text-white">Connections</h3>
+            <h3 className="text-lg sm:text-xl font-semibold mb-4 text-white">Connections</h3>
             {data.network.connections.length === 0 ? (
-              <div className="text-center py-20 bg-gray-800 rounded-lg">
-                <p className="text-gray-400">No connections yet</p>
+              <div className="text-center py-12 sm:py-20 bg-gray-800 rounded-lg">
+                <p className="text-gray-400 text-sm sm:text-base">No connections yet</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {data.network.connections.map((conn) => {
                   // Check if this connection is the current logged-in user
                   const connectionUserId = conn.user?.id || conn.user?._id;
@@ -543,14 +543,14 @@ const Profile = () => {
                   return (
                     <div
                       key={conn.id}
-                      className="bg-gray-800 rounded-lg p-4 flex items-center justify-between"
+                      className="bg-gray-800 rounded-lg p-3 sm:p-4 flex items-center justify-between"
                     >
                       <Link
                         to={displayLink}
-                        className="flex items-center space-x-3 flex-1"
+                        className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0"
                       >
-                        <div className="relative w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-white overflow-hidden">
-                          <span>{displayName.charAt(0).toUpperCase()}</span>
+                        <div className="relative w-10 h-10 sm:w-12 sm:h-12 bg-gray-700 rounded-full flex items-center justify-center text-white overflow-hidden flex-shrink-0">
+                          <span className="text-sm sm:text-base">{displayName.charAt(0).toUpperCase()}</span>
                           {conn.user.profilePicture && (
                             <img
                               src={resolveUploadUrl(conn.user.profilePicture)}
@@ -562,9 +562,9 @@ const Profile = () => {
                             />
                           )}
                         </div>
-                        <div>
-                          <p className="text-white font-medium">{displayName}</p>
-                          <p className="text-gray-400 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white font-medium text-sm sm:text-base truncate">{displayName}</p>
+                          <p className="text-gray-400 text-xs sm:text-sm">
                             Connected {new Date(conn.connectedAt).toLocaleDateString()}
                           </p>
                         </div>
@@ -572,7 +572,7 @@ const Profile = () => {
                       {isOwnProfile && !isCurrentUser && (
                         <button
                           onClick={() => handleRemoveConnection(conn.id)}
-                          className="ml-4 px-3 py-1 text-sm text-red-400 hover:text-red-300 transition"
+                          className="ml-2 sm:ml-4 px-2 sm:px-3 py-1 text-base sm:text-lg text-red-400 hover:text-red-300 transition flex-shrink-0"
                           title="Remove connection"
                         >
                           ×
@@ -591,11 +591,11 @@ const Profile = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
+    <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-7xl">
       {/* Profile Header */}
-      <div className="bg-[#1a1a1a] rounded-lg p-8 mb-8">
-        <div className="flex items-start gap-6">
-          <div className="relative w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center text-4xl text-white overflow-hidden">
+      <div className="bg-[#1a1a1a] rounded-lg p-4 sm:p-6 md:p-8 mb-4 sm:mb-8">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+          <div className="relative w-20 h-20 sm:w-24 sm:h-24 bg-gray-700 rounded-full flex items-center justify-center text-3xl sm:text-4xl text-white overflow-hidden flex-shrink-0">
             <span>{user.username.charAt(0).toUpperCase()}</span>
             {profileAvatar && (
               <img
@@ -608,15 +608,15 @@ const Profile = () => {
               />
             )}
           </div>
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold text-white">{user.username}</h1>
+          <div className="flex-1 w-full text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start sm:justify-between mb-2 gap-2 sm:gap-0">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                <h1 className="text-2xl sm:text-3xl font-bold text-white">{user.username}</h1>
                 {!isOwnProfile && currentUser && (
                   <button
                     onClick={handleConnect}
                     disabled={loadingConnectionStatus}
-                    className={`px-4 py-2 rounded-lg transition text-sm font-medium ${
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition text-xs sm:text-sm font-medium whitespace-nowrap ${
                       connectionStatus?.status === 'accepted' || connectionStatus?.status === 'request_sent'
                         ? 'bg-gray-600 hover:bg-gray-700 text-white'
                         : connectionStatus?.status === 'request_received'
@@ -639,14 +639,14 @@ const Profile = () => {
               {isOwnProfile && (
                 <button
                   onClick={handleLogout}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-sm font-medium"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-xs sm:text-sm font-medium w-full sm:w-auto"
                 >
                   Logout
                 </button>
               )}
             </div>
-            {user.bio && <p className="text-gray-300 mb-4">{user.bio}</p>}
-            <div className="flex gap-6 text-sm text-gray-400">
+            {user.bio && <p className="text-gray-300 mb-3 sm:mb-4 text-sm sm:text-base">{user.bio}</p>}
+            <div className="flex flex-wrap justify-center sm:justify-start gap-3 sm:gap-6 text-xs sm:text-sm text-gray-400">
               <span>Joined {new Date(user.joinedDate || user.createdAt).toLocaleDateString()}</span>
               {user.reviewCount !== undefined && (
                 <span>{user.reviewCount} reviews</span>
@@ -660,14 +660,14 @@ const Profile = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-[#1a1a1a] rounded-lg mb-6">
+      <div className="bg-[#1a1a1a] rounded-lg mb-4 sm:mb-6">
         <div className="border-b border-gray-700">
-          <nav className="flex overflow-x-auto scrollbar-hide">
+          <nav className="flex overflow-x-auto scrollbar-hide -mb-px">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-4 text-sm font-medium uppercase whitespace-nowrap transition ${
+                className={`px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium uppercase whitespace-nowrap transition ${
                   activeTab === tab.id
                     ? 'text-white border-b-2 border-green-500'
                     : 'text-gray-400 hover:text-white'
@@ -681,7 +681,7 @@ const Profile = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-[#1a1a1a] rounded-lg p-8">
+      <div className="bg-[#1a1a1a] rounded-lg p-4 sm:p-6 md:p-8">
         {renderTabContent()}
       </div>
     </div>
